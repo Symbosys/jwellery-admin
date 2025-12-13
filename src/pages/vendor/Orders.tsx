@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -6,7 +6,6 @@ import {
   MoreHorizontal, 
   Eye,
   Printer,
-  ChevronRight,
   Package,
   Truck,
   CheckCircle,
@@ -29,13 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const orders = [
   {
@@ -101,16 +95,17 @@ const statusConfig = {
   cancelled: { icon: XCircle, label: 'Cancelled', class: 'badge-destructive' },
 };
 
-const timeline = [
-  { status: 'Order Placed', date: '2024-01-15 14:32', completed: true },
-  { status: 'Payment Confirmed', date: '2024-01-15 14:35', completed: true },
-  { status: 'Processing', date: '2024-01-15 15:00', completed: true },
-  { status: 'Shipped', date: '', completed: false },
-  { status: 'Delivered', date: '', completed: false },
-];
-
 export default function Orders() {
-  const [selectedOrder, setSelectedOrder] = useState<typeof orders[0] | null>(null);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleViewOrder = (orderId: string) => {
+    navigate(`/orders/${orderId}`);
+  };
+
+  const handlePrintLabel = (orderId: string) => {
+    toast({ title: 'Printing Label', description: `Shipping label for ${orderId} is being prepared` });
+  };
 
   return (
     <div className="space-y-6">
@@ -208,66 +203,68 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order, index) => {
-                const status = statusConfig[order.status as keyof typeof statusConfig];
-                return (
-                  <motion.tr
-                    key={order.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.05 * index }}
-                    className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => setSelectedOrder(order)}
-                  >
-                    <td className="px-5 py-4">
-                      <span className="font-medium text-primary">{order.id}</span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div>
-                        <p className="font-medium">{order.customer.name}</p>
-                        <p className="text-sm text-muted-foreground">{order.customer.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 hidden md:table-cell text-sm text-muted-foreground">
-                      {order.date}
-                    </td>
-                    <td className="px-5 py-4 hidden lg:table-cell">
-                      <span className={cn(
-                        order.payment === 'paid' ? 'badge-success' : 
-                        order.payment === 'pending' ? 'badge-warning' : 'badge-muted',
-                        "capitalize"
-                      )}>
-                        {order.payment}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 font-medium">${order.total.toFixed(2)}</td>
-                    <td className="px-5 py-4">
-                      <span className={cn(status.class, "capitalize")}>
-                        {status.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedOrder(order)}>
-                            <Eye className="mr-2 h-4 w-4" /> View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Printer className="mr-2 h-4 w-4" /> Print Label
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>Update Status</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </motion.tr>
-                );
-              })}
+                  {orders.map((order, index) => {
+                    const status = statusConfig[order.status as keyof typeof statusConfig];
+                    return (
+                      <motion.tr
+                        key={order.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3, delay: 0.05 * index }}
+                        className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
+                        onClick={() => handleViewOrder(order.id)}
+                      >
+                        <td className="px-5 py-4">
+                          <span className="font-medium text-primary">{order.id}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div>
+                            <p className="font-medium">{order.customer.name}</p>
+                            <p className="text-sm text-muted-foreground">{order.customer.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 hidden md:table-cell text-sm text-muted-foreground">
+                          {order.date}
+                        </td>
+                        <td className="px-5 py-4 hidden lg:table-cell">
+                          <span className={cn(
+                            order.payment === 'paid' ? 'badge-success' : 
+                            order.payment === 'pending' ? 'badge-warning' : 'badge-muted',
+                            "capitalize"
+                          )}>
+                            {order.payment}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 font-medium">${order.total.toFixed(2)}</td>
+                        <td className="px-5 py-4">
+                          <span className={cn(status.class, "capitalize")}>
+                            {status.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}>
+                                <Eye className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePrintLabel(order.id); }}>
+                                <Printer className="mr-2 h-4 w-4" /> Print Label
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}>
+                                Update Status
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
             </tbody>
           </table>
         </div>
@@ -281,83 +278,6 @@ export default function Orders() {
           </div>
         </div>
       </motion.div>
-
-      {/* Order Details Dialog */}
-      <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Order Details - {selectedOrder?.id}</DialogTitle>
-          </DialogHeader>
-          
-          {selectedOrder && (
-            <div className="space-y-6 pt-4">
-              {/* Customer & Shipping */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-muted/30 rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Customer</h4>
-                  <p className="text-sm">{selectedOrder.customer.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedOrder.customer.email}</p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-4">
-                  <h4 className="font-medium mb-2">Shipping Address</h4>
-                  <p className="text-sm text-muted-foreground">{selectedOrder.address}</p>
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div>
-                <h4 className="font-medium mb-3">Items</h4>
-                <div className="space-y-2">
-                  {selectedOrder.items.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.qty}</p>
-                      </div>
-                      <p className="font-medium">${item.price.toFixed(2)}</p>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-2">
-                    <p className="font-semibold">Total</p>
-                    <p className="text-lg font-bold text-primary">${selectedOrder.total.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Timeline */}
-              <div>
-                <h4 className="font-medium mb-3">Order Timeline</h4>
-                <div className="space-y-3">
-                  {timeline.map((step, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className={cn(
-                        "w-3 h-3 rounded-full",
-                        step.completed ? "bg-primary" : "bg-muted"
-                      )} />
-                      <div className="flex-1">
-                        <p className={cn("text-sm", !step.completed && "text-muted-foreground")}>
-                          {step.status}
-                        </p>
-                      </div>
-                      {step.date && (
-                        <p className="text-xs text-muted-foreground">{step.date}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                <Button className="flex-1">Update Status</Button>
-                <Button variant="outline" className="flex-1">
-                  <Printer className="mr-2 h-4 w-4" /> Print Label
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

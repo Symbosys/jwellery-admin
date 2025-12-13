@@ -52,8 +52,8 @@ export function Sidebar() {
       {/* Sidebar */}
       <motion.aside
         className={cn(
-          "fixed top-0 left-0 h-full bg-sidebar z-50 flex flex-col transition-all duration-300",
-          "lg:relative lg:translate-x-0",
+          "fixed top-0 left-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex flex-col transition-all duration-300",
+          "lg:sticky lg:translate-x-0",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           isCollapsed ? "w-[72px]" : "w-64"
         )}
