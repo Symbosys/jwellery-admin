@@ -25,8 +25,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <SidebarProvider>
-          <BrowserRouter>
+        <BrowserRouter>
+          <SidebarProvider>
             <Routes>
               <Route element={<VendorLayout />}>
                 <Route path="/" element={<Dashboard />} />
@@ -46,8 +46,8 @@ function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
             <Toaster />
-          </BrowserRouter>
-        </SidebarProvider>
+          </SidebarProvider>
+        </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );
