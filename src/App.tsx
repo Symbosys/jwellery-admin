@@ -7,7 +7,10 @@ import { Toaster } from "@/components/ui/toaster";
 
 import Dashboard from "@/pages/vendor/Dashboard";
 import Products from "@/pages/vendor/Products";
+import ProductForm from "@/pages/vendor/ProductForm";
+import ProductView from "@/pages/vendor/ProductView";
 import Orders from "@/pages/vendor/Orders";
+import OrderDetails from "@/pages/vendor/OrderDetails";
 import Categories from "@/pages/vendor/Categories";
 import Messages from "@/pages/vendor/Messages";
 import Analytics from "@/pages/vendor/Analytics";
@@ -28,7 +31,11 @@ function App() {
               <Route element={<VendorLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/products" element={<Products />} />
+                <Route path="/products/new" element={<ProductForm />} />
+                <Route path="/products/:productId" element={<ProductView />} />
+                <Route path="/products/:productId/edit" element={<ProductForm />} />
                 <Route path="/orders" element={<Orders />} />
+                <Route path="/orders/:orderId" element={<OrderDetails />} />
                 <Route path="/categories" element={<Categories />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/analytics" element={<Analytics />} />

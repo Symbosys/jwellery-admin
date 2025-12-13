@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const products = [
   {
@@ -109,6 +111,8 @@ const statusLabels = {
 };
 
 export default function Products() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -126,6 +130,18 @@ export default function Products() {
     }
   };
 
+  const handleView = (id: number) => {
+    navigate(`/products/${id}`);
+  };
+
+  const handleEdit = (id: number) => {
+    navigate(`/products/${id}/edit`);
+  };
+
+  const handleDelete = (id: number) => {
+    toast({ title: 'Product Deleted', description: 'Product has been deleted successfully' });
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -138,7 +154,7 @@ export default function Products() {
           <h1 className="text-2xl lg:text-3xl font-bold">Products</h1>
           <p className="text-muted-foreground">Manage your product inventory</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => navigate('/products/new')}>
           <Plus className="w-4 h-4" />
           Add Product
         </Button>
@@ -291,14 +307,14 @@ export default function Products() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleView(product.id)}>
                           <Eye className="mr-2 h-4 w-4" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(product.id)}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

@@ -12,10 +12,7 @@ export function VendorLayout() {
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />
       
-      <div className={cn(
-        "flex-1 flex flex-col min-h-screen transition-all duration-300",
-        "lg:ml-0"
-      )}>
+      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
         <Header />
         
         <main className="flex-1 overflow-auto p-4 lg:p-6 pb-20 lg:pb-6">
