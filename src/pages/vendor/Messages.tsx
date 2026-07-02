@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -14,57 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-
-const conversations = [
-  {
-    id: 1,
-    customer: { name: 'John Smith', avatar: '', initials: 'JS' },
-    lastMessage: 'Is the product still available?',
-    time: '2 min ago',
-    unread: 2,
-    orderId: 'ORD-7842',
-  },
-  {
-    id: 2,
-    customer: { name: 'Sarah Johnson', avatar: '', initials: 'SJ' },
-    lastMessage: 'Thank you for the quick response!',
-    time: '15 min ago',
-    unread: 0,
-    orderId: 'ORD-7841',
-  },
-  {
-    id: 3,
-    customer: { name: 'Mike Brown', avatar: '', initials: 'MB' },
-    lastMessage: 'When will my order be shipped?',
-    time: '1 hour ago',
-    unread: 1,
-    orderId: 'ORD-7840',
-  },
-  {
-    id: 4,
-    customer: { name: 'Emily Davis', avatar: '', initials: 'ED' },
-    lastMessage: 'Can I change the delivery address?',
-    time: '3 hours ago',
-    unread: 0,
-    orderId: 'ORD-7839',
-  },
-  {
-    id: 5,
-    customer: { name: 'Alex Wilson', avatar: '', initials: 'AW' },
-    lastMessage: 'I would like to return this item',
-    time: 'Yesterday',
-    unread: 0,
-    orderId: 'ORD-7838',
-  },
-];
-
-const messages = [
-  { id: 1, sender: 'customer', text: 'Hi, I have a question about my order', time: '10:30 AM' },
-  { id: 2, sender: 'vendor', text: 'Hello! Of course, how can I help you?', time: '10:32 AM' },
-  { id: 3, sender: 'customer', text: 'Is the product still available? I want to order 2 more', time: '10:33 AM' },
-  { id: 4, sender: 'vendor', text: 'Yes, we have plenty in stock! Would you like me to create an order for you?', time: '10:35 AM' },
-  { id: 5, sender: 'customer', text: 'That would be great, thank you!', time: '10:36 AM' },
-];
+import { useAllSessionsQuery, useSendAgentReplyMutation, useCloseSessionMutation } from '@/api/hooks/chat.hooks';
+import { formatDistanceToNow } from 'date-fns';
 
 const quickReplies = [
   'Thank you for your order!',
@@ -74,15 +25,86 @@ const quickReplies = [
 ];
 
 export default function Messages() {
-  const [selectedConversation, setSelectedConversation] = useState<number | null>(1);
+  const { data: dbSessions = [], isLoading } = useAllSessionsQuery();
+  const sendReplyMutation = useSendAgentReplyMutation();
+  const closeSessionMutation = useCloseSessionMutation();
+
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Map backend sessions to UI
+  const conversations = dbSessions.map(session => {
+    const user = session.user;
+    const isGuest = !user;
+    
+    // Fallback initials and names for guests
+    const initials = isGuest ? 'G' : `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase() || 'U';
+    const name = isGuest ? 'Guest User' : `${user?.firstName} ${user?.lastName}`.trim();
+    
+    // Sort messages to find the latest
+    const sortedMessages = [...(session.messages || [])].sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const latestMessage = sortedMessages.length > 0 ? sortedMessages[sortedMessages.length - 1] : null;
+    
+    // Unread count: for now assume 0 as we don't have read receipts
+    const unread = 0; 
+    
+    return {
+      id: session.id,
+      customer: { name, avatar: '', initials },
+      lastMessage: latestMessage ? latestMessage.text : 'No messages yet',
+      time: latestMessage ? formatDistanceToNow(new Date(latestMessage.createdAt), { addSuffix: true }) : '',
+      unread,
+      orderId: isGuest ? 'GUEST' : `ID: ${user?.id.substring(0, 8)}`,
+      rawMessages: sortedMessages,
+      status: session.status
+    };
+  });
 
   const currentConvo = conversations.find(c => c.id === selectedConversation);
 
-  const handleSelectConversation = (id: number) => {
+  // Auto-select first conversation if none selected
+  useEffect(() => {
+    if (conversations.length > 0 && !selectedConversation) {
+      setSelectedConversation(conversations[0].id);
+    }
+  }, [conversations, selectedConversation]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentConvo?.rawMessages, selectedConversation]);
+
+  const handleSelectConversation = (id: string) => {
     setSelectedConversation(id);
     setShowMobileChat(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim() || !selectedConversation) return;
+    try {
+      await sendReplyMutation.mutateAsync({
+        sessionId: selectedConversation,
+        text: messageText.trim()
+      });
+      setMessageText('');
+    } catch (err) {
+      console.error("Failed to send reply", err);
+    }
+  };
+
+  const handleCloseSession = async () => {
+    if (!selectedConversation) return;
+    try {
+      await closeSessionMutation.mutateAsync(selectedConversation);
+    } catch (err) {
+      console.error("Failed to close session", err);
+    }
   };
 
   return (
@@ -185,7 +207,7 @@ export default function Messages() {
                   <Button variant="ghost" size="icon">
                     <Video className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" title="Close Session" onClick={handleCloseSession} disabled={currentConvo.status === 'CLOSED'}>
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </div>
@@ -194,30 +216,31 @@ export default function Messages() {
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
-                  {messages.map((msg) => (
+                  {currentConvo.rawMessages.map((msg) => (
                     <div
                       key={msg.id}
                       className={cn(
                         "flex",
-                        msg.sender === 'vendor' ? "justify-end" : "justify-start"
+                        msg.sender === 'AGENT' ? "justify-end" : "justify-start"
                       )}
                     >
                       <div className={cn(
                         "max-w-[70%] rounded-2xl px-4 py-2",
-                        msg.sender === 'vendor' 
+                        msg.sender === 'AGENT' 
                           ? "bg-primary text-primary-foreground rounded-br-sm"
                           : "bg-muted rounded-bl-sm"
                       )}>
                         <p className="text-sm">{msg.text}</p>
                         <p className={cn(
                           "text-[10px] mt-1",
-                          msg.sender === 'vendor' ? "text-primary-foreground/70" : "text-muted-foreground"
+                          msg.sender === 'AGENT' ? "text-primary-foreground/70" : "text-muted-foreground"
                         )}>
-                          {msg.time}
+                          {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
                   ))}
+                  <div ref={scrollRef} />
                 </div>
               </ScrollArea>
 
@@ -240,20 +263,27 @@ export default function Messages() {
 
               {/* Input */}
               <div className="p-4 border-t border-border">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="icon">
-                    <Paperclip className="w-5 h-5" />
-                  </Button>
-                  <Input 
-                    placeholder="Type a message..." 
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button size="icon">
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
+                {currentConvo.status === 'CLOSED' ? (
+                  <div className="text-center text-sm text-muted-foreground py-2">
+                    This session has been closed.
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon">
+                      <Paperclip className="w-5 h-5" />
+                    </Button>
+                    <Input 
+                      placeholder="Type a message..." 
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      className="flex-1"
+                    />
+                    <Button size="icon" onClick={handleSendMessage} disabled={!messageText.trim()}>
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           ) : (

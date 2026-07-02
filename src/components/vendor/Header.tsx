@@ -1,4 +1,4 @@
-import { Bell, Search, Menu, Sun, Moon, User } from 'lucide-react';
+import { Bell, Search, Menu, Sun, Moon, User, LogOut } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useSidebarContext } from '@/context/SidebarContext';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/context/AuthContext';
+import { useLogoutMutation } from '@/api/hooks/auth.hooks';
+import { useNavigate } from 'react-router-dom';
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { toggleMobile } = useSidebarContext();
+  const { logout } = useAuth();
+  const logoutMutation = useLogoutMutation();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      logout();
+      navigate('/login');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-4 lg:px-6">
@@ -71,21 +88,24 @@ export function Header() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">Vendor Store</p>
-                <p className="text-xs text-muted-foreground">vendor@store.com</p>
+                {/* <p className="text-sm font-medium">Vendor Store</p>
+                <p className="text-xs text-muted-foreground">vendor@store.com</p> */}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            {/* <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            </DropdownMenuItem> */}
+            {/* <DropdownMenuItem>Settings</DropdownMenuItem> */}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Log out</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+    </header> 
   );
 }

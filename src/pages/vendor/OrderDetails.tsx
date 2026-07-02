@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -10,7 +10,6 @@ import {
   XCircle,
   MapPin,
   User,
-  Mail,
   Phone,
   CreditCard,
   Printer,
@@ -19,9 +18,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Copy,
-  ExternalLink,
   Calendar,
-  DollarSign,
   ShoppingBag,
   Edit,
   RotateCcw,
@@ -36,8 +33,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -51,130 +46,37 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-// Mock order data
-const ordersData: Record<string, any> = {
-  'ORD-2024-7842': {
-    id: 'ORD-2024-7842',
-    customer: {
-      name: 'John Smith',
-      email: 'john@email.com',
-      phone: '+1 (555) 123-4567',
-      avatar: 'JS',
-    },
-    items: [
-      { id: 1, name: 'Wireless Headphones Pro', qty: 1, price: 129.99, sku: 'WHP-001', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop' },
-      { id: 2, name: 'USB-C Cable', qty: 2, price: 14.99, sku: 'USC-002', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=100&h=100&fit=crop' },
-    ],
-    subtotal: 159.97,
-    shipping: 9.99,
-    tax: 14.40,
-    discount: 10.00,
-    total: 174.36,
-    status: 'processing',
-    payment: {
-      status: 'paid',
-      method: 'Credit Card',
-      last4: '4242',
-      transactionId: 'TXN-987654321',
-    },
-    shipping_address: {
-      street: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zip: '10001',
-      country: 'United States',
-    },
-    billing_address: {
-      street: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      zip: '10001',
-      country: 'United States',
-    },
-    date: '2024-01-15 14:32',
-    notes: 'Please leave at the door.',
-    tracking: {
-      carrier: 'FedEx',
-      number: '',
-      url: '',
-    },
-    timeline: [
-      { status: 'Order Placed', date: '2024-01-15 14:32', completed: true, description: 'Customer placed the order' },
-      { status: 'Payment Confirmed', date: '2024-01-15 14:35', completed: true, description: 'Payment verified successfully' },
-      { status: 'Processing', date: '2024-01-15 15:00', completed: true, description: 'Order is being prepared' },
-      { status: 'Shipped', date: '', completed: false, description: 'Package handed to carrier' },
-      { status: 'Delivered', date: '', completed: false, description: 'Package delivered to customer' },
-    ],
-  },
-  'ORD-2024-7841': {
-    id: 'ORD-2024-7841',
-    customer: {
-      name: 'Sarah Johnson',
-      email: 'sarah@email.com',
-      phone: '+1 (555) 234-5678',
-      avatar: 'SJ',
-    },
-    items: [
-      { id: 1, name: 'Smart Watch Series 5', qty: 1, price: 299.00, sku: 'SWS-005', image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&h=100&fit=crop' },
-    ],
-    subtotal: 299.00,
-    shipping: 0,
-    tax: 26.91,
-    discount: 0,
-    total: 325.91,
-    status: 'shipped',
-    payment: {
-      status: 'paid',
-      method: 'PayPal',
-      last4: '',
-      transactionId: 'TXN-123456789',
-    },
-    shipping_address: {
-      street: '456 Oak Ave',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90001',
-      country: 'United States',
-    },
-    billing_address: {
-      street: '456 Oak Ave',
-      city: 'Los Angeles',
-      state: 'CA',
-      zip: '90001',
-      country: 'United States',
-    },
-    date: '2024-01-15 12:18',
-    notes: '',
-    tracking: {
-      carrier: 'UPS',
-      number: '1Z999AA10123456784',
-      url: 'https://www.ups.com/track',
-    },
-    timeline: [
-      { status: 'Order Placed', date: '2024-01-15 12:18', completed: true, description: 'Customer placed the order' },
-      { status: 'Payment Confirmed', date: '2024-01-15 12:20', completed: true, description: 'Payment verified successfully' },
-      { status: 'Processing', date: '2024-01-15 13:00', completed: true, description: 'Order is being prepared' },
-      { status: 'Shipped', date: '2024-01-16 09:30', completed: true, description: 'Package handed to UPS' },
-      { status: 'Delivered', date: '', completed: false, description: 'Package delivered to customer' },
-    ],
-  },
-};
+import { 
+  useOrderDetailQuery, 
+  useUpdateOrderStatusMutation, 
+  useUpdateOrderPaymentStatusMutation 
+} from '@/api/hooks/order.hooks';
 
 const statusConfig = {
   pending: { icon: Clock, label: 'Pending', class: 'badge-warning', color: 'bg-warning/10 text-warning border-warning/20' },
+  confirmed: { icon: Clock, label: 'Confirmed', class: 'badge-info', color: 'bg-info/10 text-info border-info/20' },
   processing: { icon: Package, label: 'Processing', class: 'badge-info', color: 'bg-info/10 text-info border-info/20' },
   shipped: { icon: Truck, label: 'Shipped', class: 'badge-info', color: 'bg-info/10 text-info border-info/20' },
   delivered: { icon: CheckCircle, label: 'Delivered', class: 'badge-success', color: 'bg-success/10 text-success border-success/20' },
   cancelled: { icon: XCircle, label: 'Cancelled', class: 'badge-destructive', color: 'bg-destructive/10 text-destructive border-destructive/20' },
+  returned: { icon: XCircle, label: 'Returned', class: 'badge-destructive', color: 'bg-destructive/10 text-destructive border-destructive/20' },
 };
 
 const statusOptions = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'PROCESSING', label: 'Processing' },
+  { value: 'SHIPPED', label: 'Shipped' },
+  { value: 'DELIVERED', label: 'Delivered' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'RETURNED', label: 'Returned' },
+];
+
+const paymentStatusOptions = [
+  { value: 'UNPAID', label: 'Unpaid' },
+  { value: 'PAID', label: 'Paid' },
+  { value: 'REFUNDED', label: 'Refunded' },
+  { value: 'FAILED', label: 'Failed' },
 ];
 
 export default function OrderDetails() {
@@ -182,30 +84,95 @@ export default function OrderDetails() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const order = ordersData[orderId || ''] || ordersData['ORD-2024-7842'];
+  const { data: order, isLoading, error } = useOrderDetailQuery(orderId || '');
   
-  const [status, setStatus] = useState(order.status);
-  const [trackingNumber, setTrackingNumber] = useState(order.tracking.number);
-  const [trackingCarrier, setTrackingCarrier] = useState(order.tracking.carrier);
+  const updateStatusMutation = useUpdateOrderStatusMutation();
+  const updatePaymentStatusMutation = useUpdateOrderPaymentStatusMutation();
+
+  const [status, setStatus] = useState<string>('PENDING');
+  const [paymentStatus, setPaymentStatus] = useState<string>('UNPAID');
   const [internalNote, setInternalNote] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 
-  const currentStatus = statusConfig[status as keyof typeof statusConfig];
-  const StatusIcon = currentStatus?.icon || Package;
+  useEffect(() => {
+    if (order) {
+      setStatus(order.status);
+      setPaymentStatus(order.paymentStatus);
+    }
+  }, [order]);
 
-  const handleStatusUpdate = (newStatus: string) => {
-    setStatus(newStatus);
-    toast({
-      title: 'Status Updated',
-      description: `Order status changed to ${statusOptions.find(s => s.value === newStatus)?.label}`,
-    });
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-2">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm">Loading order details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <p className="text-destructive font-medium">Failed to load order: {error instanceof Error ? error.message : "Order not found"}</p>
+        <Button variant="outline" onClick={() => navigate('/orders')}>Back to Orders</Button>
+      </div>
+    );
+  }
+
+  const currentStatus = statusConfig[status.toLowerCase() as keyof typeof statusConfig] || { icon: Package, label: status, class: 'badge-muted', color: 'bg-muted/10 text-muted border-muted/20' };
+  const StatusIcon = currentStatus.icon;
+
+  const handleStatusUpdate = (newStatus: any) => {
+    updateStatusMutation.mutate(
+      { id: order.id, status: newStatus },
+      {
+        onSuccess: (updatedOrder) => {
+          setStatus(updatedOrder.status);
+          toast({
+            title: 'Status Updated',
+            description: `Order status changed to ${statusOptions.find(s => s.value === newStatus)?.label}`,
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: err.message || "Failed to update order status"
+          });
+        }
+      }
+    );
+  };
+
+  const handlePaymentStatusUpdate = (newPaymentStatus: any) => {
+    updatePaymentStatusMutation.mutate(
+      { id: order.id, paymentStatus: newPaymentStatus },
+      {
+        onSuccess: (updatedOrder) => {
+          setPaymentStatus(updatedOrder.paymentStatus);
+          toast({
+            title: 'Payment Status Updated',
+            description: `Payment status changed to ${paymentStatusOptions.find(s => s.value === newPaymentStatus)?.label}`,
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: err.message || "Failed to update payment status"
+          });
+        }
+      }
+    );
   };
 
   const handleCopyOrderId = () => {
-    navigator.clipboard.writeText(order.id);
-    toast({ title: 'Copied!', description: 'Order ID copied to clipboard' });
+    navigator.clipboard.writeText(order.orderNumber);
+    toast({ title: 'Copied!', description: 'Order number copied to clipboard' });
   };
 
   const handlePrintInvoice = () => {
@@ -216,24 +183,28 @@ export default function OrderDetails() {
     toast({ title: 'Printing Label', description: 'Shipping label is being prepared' });
   };
 
-  const handleSaveTracking = () => {
-    toast({ title: 'Tracking Updated', description: 'Tracking information has been saved' });
-  };
-
   const handleRefund = () => {
     setIsRefundDialogOpen(false);
-    toast({ title: 'Refund Initiated', description: 'Refund process has been started' });
+    handlePaymentStatusUpdate('REFUNDED');
   };
 
   const handleCancelOrder = () => {
     setIsCancelDialogOpen(false);
-    setStatus('cancelled');
-    toast({ title: 'Order Cancelled', description: 'Order has been cancelled successfully' });
+    handleStatusUpdate('CANCELLED');
   };
 
-  const handleContactCustomer = () => {
-    navigate('/messages');
-  };
+  // Generate timeline milestones dynamically based on DB fields
+  const timeline = [
+    { status: 'Order Placed', date: order.createdAt ? new Date(order.createdAt).toLocaleString() : '', completed: true, description: 'Customer placed the order' },
+    { status: 'Confirmed', date: order.placedAt ? new Date(order.placedAt).toLocaleString() : '', completed: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status), description: 'Order confirmed' },
+    { status: 'Processing', date: '', completed: ['PROCESSING', 'SHIPPED', 'DELIVERED'].includes(order.status), description: 'Order is being prepared' },
+    { status: 'Shipped', date: order.shippedAt ? new Date(order.shippedAt).toLocaleString() : '', completed: ['SHIPPED', 'DELIVERED'].includes(order.status), description: 'Package handed to carrier' },
+    { status: 'Delivered', date: order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '', completed: order.status === 'DELIVERED', description: 'Package delivered to customer' },
+  ];
+  
+  if (order.status === 'CANCELLED') {
+    timeline.push({ status: 'Cancelled', date: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString() : '', completed: true, description: 'Order was cancelled' });
+  }
 
   return (
     <div className="space-y-6">
@@ -249,18 +220,18 @@ export default function OrderDetails() {
           </Button>
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl lg:text-3xl font-bold">{order.id}</h1>
+              <h1 className="text-2xl lg:text-3xl font-bold">{order.orderNumber}</h1>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyOrderId}>
                 <Copy className="w-4 h-4" />
               </Button>
-              <Badge variant="outline" className={cn('border', currentStatus?.color)}>
+              <Badge variant="outline" className={cn('border', currentStatus.color)}>
                 <StatusIcon className="w-3 h-3 mr-1" />
-                {currentStatus?.label}
+                {currentStatus.label}
               </Badge>
             </div>
             <p className="text-muted-foreground flex items-center gap-2 mt-1">
               <Calendar className="w-4 h-4" />
-              {order.date}
+              {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
@@ -275,59 +246,63 @@ export default function OrderDetails() {
             <Printer className="w-4 h-4 mr-2" />
             Shipping Label
           </Button>
-          <Button variant="outline" size="sm" onClick={handleContactCustomer}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/messages')}>
             <MessageSquare className="w-4 h-4 mr-2" />
             Contact Customer
           </Button>
-          <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Refund
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Process Refund</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to refund this order? This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <Label>Reason for refund</Label>
-                <Textarea
-                  placeholder="Enter reason for refund..."
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  className="mt-2"
-                />
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsRefundDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleRefund}>Process Refund</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                <XCircle className="w-4 h-4 mr-2" />
-                Cancel Order
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Cancel Order</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to cancel this order? This will notify the customer.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>Keep Order</Button>
-                <Button variant="destructive" onClick={handleCancelOrder}>Cancel Order</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          {paymentStatus !== 'REFUNDED' && (
+            <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Refund
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Process Refund</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to refund this order? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <label className="text-sm font-medium">Reason for refund</label>
+                  <Textarea
+                    placeholder="Enter reason for refund..."
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsRefundDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleRefund}>Process Refund</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          {status !== 'CANCELLED' && status !== 'DELIVERED' && (
+            <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel Order
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Cancel Order</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to cancel this order? This will restore stock.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>Keep Order</Button>
+                  <Button variant="destructive" onClick={handleCancelOrder}>Cancel Order</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </motion.div>
 
@@ -349,21 +324,23 @@ export default function OrderDetails() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {order.items.map((item: any) => (
+                  {order.items?.map((item: any) => (
                     <div key={item.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
                       <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 rounded-lg object-cover"
+                        src={item.productImage}
+                        alt={item.productName}
+                        className="w-16 h-16 rounded-lg object-cover bg-background border border-border"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.qty}</p>
+                        <p className="font-medium truncate">{item.productName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.size && `Size: ${item.size}`} {item.color && `• Color: ${item.color}`}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">Qty: {item.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">${(item.price * item.qty).toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
+                        <p className="font-semibold">${Number(item.totalPrice).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">${Number(item.unitPrice).toFixed(2)} each</p>
                       </div>
                     </div>
                   ))}
@@ -375,26 +352,26 @@ export default function OrderDetails() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>${Number(order.subtotal).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span>{order.shipping > 0 ? `$${order.shipping.toFixed(2)}` : 'Free'}</span>
+                    <span>{Number(order.shippingCharge) > 0 ? `$${Number(order.shippingCharge).toFixed(2)}` : 'Free'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>${Number(order.tax).toFixed(2)}</span>
                   </div>
-                  {order.discount > 0 && (
+                  {Number(order.discount) > 0 && (
                     <div className="flex justify-between text-success">
                       <span>Discount</span>
-                      <span>-${order.discount.toFixed(2)}</span>
+                      <span>-${Number(order.discount).toFixed(2)}</span>
                     </div>
                   )}
                   <Separator className="my-2" />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span className="text-primary">${order.total.toFixed(2)}</span>
+                    <span className="text-primary">${Number(order.totalAmount).toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -416,7 +393,7 @@ export default function OrderDetails() {
               </CardHeader>
               <CardContent>
                 <div className="relative">
-                  {order.timeline.map((step: any, index: number) => (
+                  {timeline.map((step: any, index: number) => (
                     <div key={index} className="flex gap-4 pb-6 last:pb-0">
                       <div className="flex flex-col items-center">
                         <div className={cn(
@@ -427,7 +404,7 @@ export default function OrderDetails() {
                         )}>
                           {step.completed && <CheckCircle className="w-3 h-3 text-primary-foreground" />}
                         </div>
-                        {index < order.timeline.length - 1 && (
+                        {index < timeline.length - 1 && (
                           <div className={cn(
                             "w-0.5 flex-1 mt-2",
                             step.completed ? "bg-primary" : "bg-muted"
@@ -452,59 +429,6 @@ export default function OrderDetails() {
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* Shipping & Tracking */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="w-5 h-5" />
-                  Shipping & Tracking
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Carrier</Label>
-                    <Select value={trackingCarrier} onValueChange={setTrackingCarrier}>
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder="Select carrier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="FedEx">FedEx</SelectItem>
-                        <SelectItem value="UPS">UPS</SelectItem>
-                        <SelectItem value="USPS">USPS</SelectItem>
-                        <SelectItem value="DHL">DHL</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Tracking Number</Label>
-                    <Input
-                      value={trackingNumber}
-                      onChange={(e) => setTrackingNumber(e.target.value)}
-                      placeholder="Enter tracking number"
-                      className="mt-1.5"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveTracking}>Save Tracking</Button>
-                  {trackingNumber && (
-                    <Button variant="outline">
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Track Package
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
 
         {/* Right Column */}
@@ -523,20 +447,23 @@ export default function OrderDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Select value={status} onValueChange={handleStatusUpdate}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <div>
-                  <Label>Internal Note</Label>
+                  <label className="text-sm font-medium">Order Status</label>
+                  <Select value={status} onValueChange={handleStatusUpdate}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Internal Note</label>
                   <Textarea
                     value={internalNote}
                     onChange={(e) => setInternalNote(e.target.value)}
@@ -545,9 +472,9 @@ export default function OrderDetails() {
                     rows={3}
                   />
                 </div>
-                <Button className="w-full">
+                <Button className="w-full" onClick={() => toast({ title: "Note Saved", description: "Internal note has been attached to order" })}>
                   <Edit className="w-4 h-4 mr-2" />
-                  Update Order
+                  Save Notes
                 </Button>
               </CardContent>
             </Card>
@@ -569,22 +496,18 @@ export default function OrderDetails() {
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-primary font-semibold">{order.customer.avatar}</span>
+                    <span className="text-primary font-semibold">{order.shippingName.slice(0, 2).toUpperCase()}</span>
                   </div>
                   <div>
-                    <p className="font-medium">{order.customer.name}</p>
-                    <p className="text-sm text-muted-foreground">Customer</p>
+                    <p className="font-medium">{order.shippingName}</p>
+                    <p className="text-sm text-muted-foreground">Buyer</p>
                   </div>
                 </div>
                 <Separator />
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span>{order.customer.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-muted-foreground" />
-                    <span>{order.customer.phone}</span>
+                    <span>{order.shippingPhone}</span>
                   </div>
                 </div>
               </CardContent>
@@ -605,10 +528,10 @@ export default function OrderDetails() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">
-                  {order.shipping_address.street}<br />
-                  {order.shipping_address.city}, {order.shipping_address.state} {order.shipping_address.zip}<br />
-                  {order.shipping_address.country}
+                <p className="text-sm leading-relaxed">
+                  {order.shippingName}<br />
+                  {order.shippingAddress}<br />
+                  {order.shippingCity}, {order.shippingState} {order.shippingPincode}
                 </p>
               </CardContent>
             </Card>
@@ -627,29 +550,39 @@ export default function OrderDetails() {
                   Payment
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge variant="outline" className={cn(
-                    order.payment.status === 'paid' ? 'bg-success/10 text-success border-success/20' : 'bg-warning/10 text-warning border-warning/20'
-                  )}>
-                    {order.payment.status}
-                  </Badge>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Payment Status</label>
+                  <Select value={paymentStatus} onValueChange={handlePaymentStatusUpdate}>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {paymentStatusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Method</span>
-                  <span>{order.payment.method}{order.payment.last4 && ` •••• ${order.payment.last4}`}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Transaction ID</span>
-                  <span className="font-mono text-xs">{order.payment.transactionId}</span>
+                <Separator />
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Method</span>
+                    <span className="font-medium">{order.paymentMethod || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Amount</span>
+                    <span className="font-semibold text-primary">${Number(order.totalAmount).toFixed(2)}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
           {/* Customer Note */}
-          {order.notes && (
+          {order.note && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -663,7 +596,7 @@ export default function OrderDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm italic text-muted-foreground">"{order.notes}"</p>
+                  <p className="text-sm italic text-muted-foreground">"{order.note}"</p>
                 </CardContent>
               </Card>
             </motion.div>

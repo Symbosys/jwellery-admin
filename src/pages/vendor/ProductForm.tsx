@@ -1,6 +1,13 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useCategoriesQuery } from "@/api/hooks/category.hooks";
+import { useAttributesQuery } from "@/api/hooks/attribute.hooks";
+import {
+  useProductDetailQuery,
+  useCreateProductMutation,
+  useUpdateProductMutation,
+} from "@/api/hooks/product.hooks";
 import {
   ArrowLeft,
   Save,
@@ -16,50 +23,58 @@ import {
   Truck,
   Search as SearchIcon,
   Info,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const existingProducts: Record<string, any> = {
-  '1': {
-    name: 'Wireless Bluetooth Headphones',
-    description: 'Premium wireless headphones with noise cancellation technology. Experience crystal-clear audio with deep bass and exceptional comfort for extended listening sessions.',
-    sku: 'WBH-001',
-    category: 'electronics',
-    subcategory: 'audio',
+  "1": {
+    name: "Wireless Bluetooth Headphones",
+    description:
+      "Premium wireless headphones with noise cancellation technology. Experience crystal-clear audio with deep bass and exceptional comfort for extended listening sessions.",
+    sku: "WBH-001",
+    category: "electronics",
+    subcategory: "audio",
     price: 129.99,
     comparePrice: 159.99,
-    cost: 65.00,
+    cost: 65.0,
     stock: 145,
     lowStockThreshold: 10,
     weight: 0.35,
-    weightUnit: 'kg',
-    status: 'active',
+    weightUnit: "kg",
+    status: "active",
     images: [
-      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop',
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
     ],
     variants: [
-      { id: 1, name: 'Black', sku: 'WBH-001-BLK', stock: 80, price: 129.99 },
-      { id: 2, name: 'White', sku: 'WBH-001-WHT', stock: 65, price: 129.99 },
+      { id: 1, name: "Black", sku: "WBH-001-BLK", stock: 80, price: 129.99 },
+      { id: 2, name: "White", sku: "WBH-001-WHT", stock: 65, price: 129.99 },
     ],
     seo: {
-      title: 'Wireless Bluetooth Headphones - Premium Sound Quality',
-      description: 'Shop premium wireless headphones with active noise cancellation. Free shipping on orders over $50.',
-      keywords: 'wireless headphones, bluetooth headphones, noise cancellation',
+      title: "Wireless Bluetooth Headphones - Premium Sound Quality",
+      description:
+        "Shop premium wireless headphones with active noise cancellation. Free shipping on orders over $50.",
+      keywords: "wireless headphones, bluetooth headphones, noise cancellation",
     },
     taxable: true,
     shippingRequired: true,
@@ -71,75 +86,159 @@ export default function ProductForm() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isEditing = !!productId;
-  const existingProduct = productId ? existingProducts[productId] : null;
+
+  const { data: product, isLoading: isLoadingProduct } = useProductDetailQuery(
+    productId || "",
+    isEditing,
+  );
+  const { data: categoriesData } = useCategoriesQuery();
+  const { data: attributes } = useAttributesQuery();
+
+  const createMutation = useCreateProductMutation();
+  const updateMutation = useUpdateProductMutation();
 
   // Form state
   const [formData, setFormData] = useState({
-    name: existingProduct?.name || '',
-    description: existingProduct?.description || '',
-    sku: existingProduct?.sku || '',
-    category: existingProduct?.category || '',
-    subcategory: existingProduct?.subcategory || '',
-    price: existingProduct?.price || '',
-    comparePrice: existingProduct?.comparePrice || '',
-    cost: existingProduct?.cost || '',
-    stock: existingProduct?.stock || '',
-    lowStockThreshold: existingProduct?.lowStockThreshold || 10,
-    weight: existingProduct?.weight || '',
-    weightUnit: existingProduct?.weightUnit || 'kg',
-    status: existingProduct?.status || 'draft',
-    taxable: existingProduct?.taxable ?? true,
-    shippingRequired: existingProduct?.shippingRequired ?? true,
-    seoTitle: existingProduct?.seo?.title || '',
-    seoDescription: existingProduct?.seo?.description || '',
-    seoKeywords: existingProduct?.seo?.keywords || '',
+    name: "",
+    description: "",
+    sku: "",
+    category: "",
+    subcategory: "",
+    price: "",
+    comparePrice: "",
+    cost: "",
+    stock: "",
+    lowStockThreshold: 10,
+    weight: "",
+    weightUnit: "kg",
+    status: "draft",
+    taxable: true,
+    shippingRequired: true,
+    seoTitle: "",
+    seoDescription: "",
+    seoKeywords: "",
   });
 
-  const [images, setImages] = useState<string[]>(existingProduct?.images || []);
-  const [variants, setVariants] = useState<any[]>(existingProduct?.variants || []);
+  const [images, setImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        name: product.name || "",
+        description: product.description || "",
+        sku: product.variants?.[0]?.sku || "",
+        category: product.categoryId || "",
+        subcategory: product.subCategoryId || "",
+        price: String(product.price) || "",
+        comparePrice: String(product.discountPrice || "") || "",
+        cost: "",
+        stock: String(product.quantity) || "",
+        lowStockThreshold: 10,
+        weight: "",
+        weightUnit: "kg",
+        status: "active",
+        taxable: true,
+        shippingRequired: true,
+        seoTitle: "",
+        seoDescription: "",
+        seoKeywords: "",
+      });
+      setImages(
+        Array.isArray(product.images)
+          ? product.images
+          : typeof product.images === "string"
+            ? JSON.parse(product.images)
+            : [],
+      );
+    }
+  }, [product]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddImage = () => {
-    const url = prompt('Enter image URL:');
-    if (url) {
-      setImages(prev => [...prev, url]);
-    }
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleRemoveImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddVariant = () => {
-    setVariants(prev => [...prev, {
-      id: Date.now(),
-      name: '',
-      sku: '',
-      stock: 0,
-      price: formData.price || 0,
-    }]);
-  };
+  const handleSave = async (asDraft = false) => {
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Product Name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      toast({
+        title: "Validation Error",
+        description: "Valid Price is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!formData.category) {
+      toast({
+        title: "Validation Error",
+        description: "Category is required",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleRemoveVariant = (id: number) => {
-    setVariants(prev => prev.filter(v => v.id !== id));
-  };
+    const payload = {
+      name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
+      price: parseFloat(formData.price),
+      discountPrice: formData.comparePrice
+        ? parseFloat(formData.comparePrice)
+        : undefined,
+      quantity: parseInt(formData.stock) || 0,
+      sku: formData.sku.trim() || undefined,
+      cost: formData.cost ? parseFloat(formData.cost) : undefined,
+      lowStockThreshold: parseInt(formData.lowStockThreshold as any) || 10,
+      weight: formData.weight ? parseFloat(formData.weight) : undefined,
+      weightUnit: formData.weightUnit || "kg",
+      status: formData.status || "active",
+      taxable: formData.taxable,
+      shippingRequired: formData.shippingRequired,
+      seoTitle: formData.seoTitle.trim() || undefined,
+      seoDescription: formData.seoDescription.trim() || undefined,
+      seoKeywords: formData.seoKeywords.trim() || undefined,
+      image:
+        images[0] ||
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+      images: images,
+      categoryId: formData.category,
+      subCategoryId: formData.subcategory || undefined,
+    };
 
-  const handleVariantChange = (id: number, field: string, value: any) => {
-    setVariants(prev => prev.map(v =>
-      v.id === id ? { ...v, [field]: value } : v
-    ));
-  };
-
-  const handleSave = (asDraft = false) => {
-    const status = asDraft ? 'draft' : 'active';
-    toast({
-      title: isEditing ? 'Product Updated' : 'Product Created',
-      description: `Product has been ${isEditing ? 'updated' : 'created'} successfully as ${status}.`,
-    });
-    navigate('/products');
+    try {
+      if (isEditing) {
+        await updateMutation.mutateAsync({ id: productId!, data: payload });
+        toast({
+          title: "Product Updated",
+          description: "Product has been updated successfully.",
+        });
+        navigate("/products");
+      } else {
+        const newProduct = await createMutation.mutateAsync(payload);
+        toast({
+          title: "Product Created",
+          description:
+            "Product has been created successfully. You can now add variants.",
+        });
+        navigate(`/products/${newProduct.id}/edit`);
+      }
+    } catch (err: any) {
+      toast({
+        title: "Error Saving Product",
+        description:
+          err.message || "Something went wrong while saving the product.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -151,15 +250,21 @@ export default function ProductForm() {
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/products')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/products")}
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold">
-              {isEditing ? 'Edit Product' : 'Add Product'}
+              {isEditing ? "Edit Product" : "Add Product"}
             </h1>
             <p className="text-muted-foreground">
-              {isEditing ? 'Update product information' : 'Create a new product listing'}
+              {isEditing
+                ? "Update product information"
+                : "Create a new product listing"}
             </p>
           </div>
         </div>
@@ -169,7 +274,7 @@ export default function ProductForm() {
           </Button>
           <Button onClick={() => handleSave(false)}>
             <Save className="w-4 h-4 mr-2" />
-            {isEditing ? 'Update Product' : 'Publish Product'}
+            {isEditing ? "Update Product" : "Publish Product"}
           </Button>
         </div>
       </motion.div>
@@ -186,7 +291,9 @@ export default function ProductForm() {
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
-                <CardDescription>Add the basic details about your product</CardDescription>
+                <CardDescription>
+                  Add the basic details about your product
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -194,7 +301,7 @@ export default function ProductForm() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
                     placeholder="Enter product name"
                     className="mt-1.5"
                   />
@@ -204,7 +311,9 @@ export default function ProductForm() {
                   <Textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("description", e.target.value)
+                    }
                     placeholder="Write a detailed description of your product..."
                     className="mt-1.5 min-h-[120px]"
                   />
@@ -225,13 +334,22 @@ export default function ProductForm() {
                   <ImageIcon className="w-5 h-5" />
                   Media
                 </CardTitle>
-                <CardDescription>Add product images (drag to reorder)</CardDescription>
+                <CardDescription>
+                  Add product images (drag to reorder)
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {images.map((img, index) => (
-                    <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                      <img src={img} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
+                    <div
+                      key={index}
+                      className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted"
+                    >
+                      <img
+                        src={img}
+                        alt={`Product ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Button
                           variant="destructive"
@@ -247,13 +365,31 @@ export default function ProductForm() {
                       </div>
                     </div>
                   ))}
-                  <button
-                    onClick={handleAddImage}
-                    className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-                  >
+                  <label className="cursor-pointer aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors">
                     <Upload className="w-6 h-6" />
                     <span className="text-xs">Add Image</span>
-                  </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (reader.result) {
+                              setImages((prev) => [
+                                ...prev,
+                                reader.result as string,
+                              ]);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                 </div>
               </CardContent>
             </Card>
@@ -277,13 +413,17 @@ export default function ProductForm() {
                   <div>
                     <Label htmlFor="price">Price *</Label>
                     <div className="relative mt-1.5">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
                       <Input
                         id="price"
                         type="number"
                         step="0.01"
                         value={formData.price}
-                        onChange={(e) => handleInputChange('price', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("price", e.target.value)
+                        }
                         placeholder="0.00"
                         className="pl-7"
                       />
@@ -292,13 +432,17 @@ export default function ProductForm() {
                   <div>
                     <Label htmlFor="comparePrice">Compare at Price</Label>
                     <div className="relative mt-1.5">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
                       <Input
                         id="comparePrice"
                         type="number"
                         step="0.01"
                         value={formData.comparePrice}
-                        onChange={(e) => handleInputChange('comparePrice', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("comparePrice", e.target.value)
+                        }
                         placeholder="0.00"
                         className="pl-7"
                       />
@@ -307,13 +451,17 @@ export default function ProductForm() {
                   <div>
                     <Label htmlFor="cost">Cost per Item</Label>
                     <div className="relative mt-1.5">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
                       <Input
                         id="cost"
                         type="number"
                         step="0.01"
                         value={formData.cost}
-                        onChange={(e) => handleInputChange('cost', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("cost", e.target.value)
+                        }
                         placeholder="0.00"
                         className="pl-7"
                       />
@@ -324,7 +472,9 @@ export default function ProductForm() {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={formData.taxable}
-                      onCheckedChange={(checked) => handleInputChange('taxable', checked)}
+                      onCheckedChange={(checked) =>
+                        handleInputChange("taxable", checked)
+                      }
                     />
                     <Label>Charge tax on this product</Label>
                   </div>
@@ -353,7 +503,7 @@ export default function ProductForm() {
                     <Input
                       id="sku"
                       value={formData.sku}
-                      onChange={(e) => handleInputChange('sku', e.target.value)}
+                      onChange={(e) => handleInputChange("sku", e.target.value)}
                       placeholder="SKU-001"
                       className="mt-1.5"
                     />
@@ -364,7 +514,9 @@ export default function ProductForm() {
                       id="stock"
                       type="number"
                       value={formData.stock}
-                      onChange={(e) => handleInputChange('stock', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("stock", e.target.value)
+                      }
                       placeholder="0"
                       className="mt-1.5"
                     />
@@ -375,103 +527,14 @@ export default function ProductForm() {
                       id="lowStock"
                       type="number"
                       value={formData.lowStockThreshold}
-                      onChange={(e) => handleInputChange('lowStockThreshold', e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("lowStockThreshold", e.target.value)
+                      }
                       placeholder="10"
                       className="mt-1.5"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Variants */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Tag className="w-5 h-5" />
-                    Variants
-                  </CardTitle>
-                  <CardDescription>Add different sizes, colors, or styles</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleAddVariant}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Variant
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {variants.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Tag className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No variants added yet</p>
-                    <p className="text-sm">Add variants if your product comes in different options</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {variants.map((variant, index) => (
-                      <div key={variant.id} className="flex items-start gap-4 p-4 bg-muted/30 rounded-lg">
-                        <div className="flex-1 grid sm:grid-cols-4 gap-4">
-                          <div>
-                            <Label>Variant Name</Label>
-                            <Input
-                              value={variant.name}
-                              onChange={(e) => handleVariantChange(variant.id, 'name', e.target.value)}
-                              placeholder="e.g., Black, Large"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>SKU</Label>
-                            <Input
-                              value={variant.sku}
-                              onChange={(e) => handleVariantChange(variant.id, 'sku', e.target.value)}
-                              placeholder="SKU"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Stock</Label>
-                            <Input
-                              type="number"
-                              value={variant.stock}
-                              onChange={(e) => handleVariantChange(variant.id, 'stock', e.target.value)}
-                              placeholder="0"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Price</Label>
-                            <div className="relative mt-1">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={variant.price}
-                                onChange={(e) => handleVariantChange(variant.id, 'price', e.target.value)}
-                                placeholder="0.00"
-                                className="pl-7"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveVariant(variant.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -493,7 +556,9 @@ export default function ProductForm() {
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={formData.shippingRequired}
-                    onCheckedChange={(checked) => handleInputChange('shippingRequired', checked)}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("shippingRequired", checked)
+                    }
                   />
                   <Label>This product requires shipping</Label>
                 </div>
@@ -506,7 +571,9 @@ export default function ProductForm() {
                         type="number"
                         step="0.01"
                         value={formData.weight}
-                        onChange={(e) => handleInputChange('weight', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("weight", e.target.value)
+                        }
                         placeholder="0.00"
                         className="mt-1.5"
                       />
@@ -515,7 +582,9 @@ export default function ProductForm() {
                       <Label htmlFor="weightUnit">Weight Unit</Label>
                       <Select
                         value={formData.weightUnit}
-                        onValueChange={(value) => handleInputChange('weightUnit', value)}
+                        onValueChange={(value) =>
+                          handleInputChange("weightUnit", value)
+                        }
                       >
                         <SelectTrigger className="mt-1.5">
                           <SelectValue />
@@ -546,7 +615,9 @@ export default function ProductForm() {
                   <SearchIcon className="w-5 h-5" />
                   Search Engine Optimization
                 </CardTitle>
-                <CardDescription>Optimize your product for search engines</CardDescription>
+                <CardDescription>
+                  Optimize your product for search engines
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -554,7 +625,9 @@ export default function ProductForm() {
                   <Input
                     id="seoTitle"
                     value={formData.seoTitle}
-                    onChange={(e) => handleInputChange('seoTitle', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("seoTitle", e.target.value)
+                    }
                     placeholder="Enter SEO title"
                     className="mt-1.5"
                   />
@@ -567,7 +640,9 @@ export default function ProductForm() {
                   <Textarea
                     id="seoDescription"
                     value={formData.seoDescription}
-                    onChange={(e) => handleInputChange('seoDescription', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("seoDescription", e.target.value)
+                    }
                     placeholder="Enter meta description"
                     className="mt-1.5"
                     rows={3}
@@ -581,7 +656,9 @@ export default function ProductForm() {
                   <Input
                     id="seoKeywords"
                     value={formData.seoKeywords}
-                    onChange={(e) => handleInputChange('seoKeywords', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("seoKeywords", e.target.value)
+                    }
                     placeholder="Enter keywords separated by commas"
                     className="mt-1.5"
                   />
@@ -606,7 +683,7 @@ export default function ProductForm() {
               <CardContent>
                 <Select
                   value={formData.status}
-                  onValueChange={(value) => handleInputChange('status', value)}
+                  onValueChange={(value) => handleInputChange("status", value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -635,35 +712,54 @@ export default function ProductForm() {
                 <div>
                   <Label>Category</Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => handleInputChange('category', value)}
+                    value={formData.category || undefined}
+                    onValueChange={(value) => {
+                      handleInputChange("category", value);
+                      handleInputChange("subcategory", "");
+                    }}
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="clothing">Clothing</SelectItem>
-                      <SelectItem value="accessories">Accessories</SelectItem>
-                      <SelectItem value="home">Home & Living</SelectItem>
-                      <SelectItem value="beauty">Beauty & Health</SelectItem>
+                      {categoriesData?.categories?.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Subcategory</Label>
                   <Select
-                    value={formData.subcategory}
-                    onValueChange={(value) => handleInputChange('subcategory', value)}
+                    value={formData.subcategory || undefined}
+                    onValueChange={(value) =>
+                      handleInputChange("subcategory", value)
+                    }
+                    disabled={!formData.category}
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="Select subcategory" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="audio">Audio</SelectItem>
-                      <SelectItem value="phones">Phones</SelectItem>
-                      <SelectItem value="computers">Computers</SelectItem>
-                      <SelectItem value="wearables">Wearables</SelectItem>
+                      {(() => {
+                        const subs = categoriesData?.categories?.find(
+                          (cat) => cat.id === formData.category,
+                        )?.subCategories;
+                        if (!subs || subs.length === 0) {
+                          return (
+                            <SelectItem value="none" disabled>
+                              No subcategories
+                            </SelectItem>
+                          );
+                        }
+                        return subs.map((sub) => (
+                          <SelectItem key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </SelectItem>
+                        ));
+                      })()}
                     </SelectContent>
                   </Select>
                 </div>

@@ -11,7 +11,8 @@ import {
   Eye,
   ChevronDown,
   Upload,
-  Package
+  Package,
+  Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,69 +33,9 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
-const products = [
-  {
-    id: 1,
-    name: 'Wireless Bluetooth Headphones',
-    sku: 'WBH-001',
-    category: 'Electronics',
-    stock: 145,
-    price: 129.99,
-    status: 'active',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop',
-  },
-  {
-    id: 2,
-    name: 'Smart Watch Series 5',
-    sku: 'SWS-005',
-    category: 'Electronics',
-    stock: 89,
-    price: 299.00,
-    status: 'active',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&h=100&fit=crop',
-  },
-  {
-    id: 3,
-    name: 'Premium Leather Wallet',
-    sku: 'PLW-012',
-    category: 'Accessories',
-    stock: 5,
-    price: 49.99,
-    status: 'low_stock',
-    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=100&h=100&fit=crop',
-  },
-  {
-    id: 4,
-    name: 'Mechanical Gaming Keyboard',
-    sku: 'MGK-007',
-    category: 'Electronics',
-    stock: 0,
-    price: 159.00,
-    status: 'out_of_stock',
-    image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=100&h=100&fit=crop',
-  },
-  {
-    id: 5,
-    name: 'Portable Bluetooth Speaker',
-    sku: 'PBS-003',
-    category: 'Electronics',
-    stock: 234,
-    price: 79.99,
-    status: 'active',
-    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=100&h=100&fit=crop',
-  },
-  {
-    id: 6,
-    name: 'Stainless Steel Water Bottle',
-    sku: 'SSWB-018',
-    category: 'Home & Living',
-    stock: 67,
-    price: 24.99,
-    status: 'draft',
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=100&h=100&fit=crop',
-  },
-];
+import { useProductsQuery, useDeleteProductMutation } from '@/api/hooks/product.hooks';
+import { useCategoriesQuery } from '@/api/hooks/category.hooks';
+import { AttributeManagerModal } from '@/components/vendor/AttributeManagerModal';
 
 const statusStyles = {
   active: 'badge-success',
@@ -110,36 +51,63 @@ const statusLabels = {
   out_of_stock: 'Out of Stock',
 };
 
+const getProductStatus = (qty: number) => {
+  if (qty === 0) return 'out_of_stock';
+  if (qty <= 10) return 'low_stock';
+  return 'active';
+};
+
 export default function Products() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
 
-  const toggleProduct = (id: number) => {
+  const { data: categoriesData } = useCategoriesQuery();
+  const { data: productsData, isLoading } = useProductsQuery({
+    search: searchQuery || undefined,
+    categoryId: selectedCategory !== 'all' ? selectedCategory : undefined,
+    limit: 50,
+  });
+  const deleteMutation = useDeleteProductMutation();
+
+  const productsList = productsData?.products || [];
+
+  const toggleProduct = (id: string) => {
     setSelectedProducts(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
   };
 
   const toggleAll = () => {
-    if (selectedProducts.length === products.length) {
+    if (selectedProducts.length === productsList.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts(products.map(p => p.id));
+      setSelectedProducts(productsList.map(p => p.id));
     }
   };
 
-  const handleView = (id: number) => {
+  const handleView = (id: string) => {
     navigate(`/products/${id}`);
   };
 
-  const handleEdit = (id: number) => {
+  const handleEdit = (id: string) => {
     navigate(`/products/${id}/edit`);
   };
 
-  const handleDelete = (id: number) => {
-    toast({ title: 'Product Deleted', description: 'Product has been deleted successfully' });
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({ title: 'Product Deleted', description: 'Product has been deleted successfully' });
+    } catch (err: any) {
+      toast({
+        title: 'Error Deleting Product',
+        description: err.message || 'Something went wrong.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -154,10 +122,16 @@ export default function Products() {
           <h1 className="text-2xl lg:text-3xl font-bold">Products</h1>
           <p className="text-muted-foreground">Manage your product inventory</p>
         </div>
-        <Button className="gap-2" onClick={() => navigate('/products/new')}>
-          <Plus className="w-4 h-4" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setIsAttributeModalOpen(true)}>
+            <Tag className="w-4 h-4" />
+            Manage Attributes
+          </Button>
+          <Button className="gap-2" onClick={() => navigate('/products/new')}>
+            <Plus className="w-4 h-4" />
+            Add Product
+          </Button>
+        </div>
       </motion.div>
 
       {/* Filters Bar */}
@@ -178,15 +152,17 @@ export default function Products() {
             />
           </div>
           <div className="flex gap-3">
-            <Select defaultValue="all">
-              <SelectTrigger className="w-[140px]">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="electronics">Electronics</SelectItem>
-                <SelectItem value="accessories">Accessories</SelectItem>
-                <SelectItem value="home">Home & Living</SelectItem>
+                {categoriesData?.categories?.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select defaultValue="all">
@@ -238,7 +214,7 @@ export default function Products() {
               <tr className="border-b border-border bg-muted/30">
                 <th className="table-header px-5 py-3 text-left w-12">
                   <Checkbox
-                    checked={selectedProducts.length === products.length}
+                    checked={selectedProducts.length === productsList.length && productsList.length > 0}
                     onCheckedChange={toggleAll}
                   />
                 </th>
@@ -252,63 +228,80 @@ export default function Products() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product, index) => (
-                <motion.tr
-                  key={product.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.05 * index }}
-                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="px-5 py-4">
-                    <Checkbox
-                      checked={selectedProducts.includes(product.id)}
-                      onCheckedChange={() => toggleProduct(product.id)}
-                    />
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                    Loading products...
                   </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover bg-muted"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate max-w-[200px]">{product.name}</p>
-                      </div>
-                    </div>
+                </tr>
+              ) : productsList.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-muted-foreground">
+                    No products found
                   </td>
-                  <td className="px-5 py-4 hidden md:table-cell">
-                    <span className="text-sm text-muted-foreground font-mono">{product.sku}</span>
-                  </td>
-                  <td className="px-5 py-4 hidden lg:table-cell">
-                    <span className="text-sm">{product.category}</span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={cn(
-                      "font-medium",
-                      product.stock === 0 && "text-destructive",
-                      product.stock > 0 && product.stock <= 10 && "text-warning"
-                    )}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 font-medium">${product.price.toFixed(2)}</td>
-                  <td className="px-5 py-4">
-                    <span className={cn(statusStyles[product.status as keyof typeof statusStyles])}>
-                      {statusLabels[product.status as keyof typeof statusLabels]}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(product.id)}>
-                          <Eye className="mr-2 h-4 w-4" /> View
+                </tr>
+              ) : (
+                productsList.map((product, index) => {
+                  const status = getProductStatus(product.quantity);
+                  const sku = product.variants?.[0]?.sku || 'N/A';
+                  const categoryName = product.category?.name || 'N/A';
+                  return (
+                    <motion.tr
+                      key={product.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 0.05 * index }}
+                      className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
+                    >
+                      <td className="px-5 py-4">
+                        <Checkbox
+                          checked={selectedProducts.includes(product.id)}
+                          onCheckedChange={() => toggleProduct(product.id)}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-12 h-12 rounded-lg object-cover bg-muted"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate max-w-[200px]">{product.name}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 hidden md:table-cell">
+                        <span className="text-sm text-muted-foreground font-mono">{sku}</span>
+                      </td>
+                      <td className="px-5 py-4 hidden lg:table-cell">
+                        <span className="text-sm">{categoryName}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={cn(
+                          "font-medium",
+                          product.quantity === 0 && "text-destructive",
+                          product.quantity > 0 && product.quantity <= 10 && "text-warning"
+                        )}>
+                          {product.quantity}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 font-medium">${Number(product.price).toFixed(2)}</td>
+                      <td className="px-5 py-4">
+                        <span className={cn(statusStyles[status as keyof typeof statusStyles])}>
+                          {statusLabels[status as keyof typeof statusLabels]}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleView(product.id)}>
+                              <Eye className="mr-2 h-4 w-4" /> View
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(product.id)}>
                           <Edit className="mr-2 h-4 w-4" /> Edit
@@ -321,7 +314,9 @@ export default function Products() {
                     </DropdownMenu>
                   </td>
                 </motion.tr>
-              ))}
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -329,7 +324,7 @@ export default function Products() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-border">
           <p className="text-sm text-muted-foreground">
-            Showing 1-6 of 342 products
+            Showing {productsList.length} products
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" disabled>Previous</Button>
@@ -337,6 +332,11 @@ export default function Products() {
           </div>
         </div>
       </motion.div>
+
+      <AttributeManagerModal 
+        open={isAttributeModalOpen} 
+        onOpenChange={setIsAttributeModalOpen} 
+      />
     </div>
   );
 }

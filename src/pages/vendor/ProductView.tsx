@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useProductDetailQuery, useDeleteProductMutation, useUpdateProductMutation } from '@/api/hooks/product.hooks';
 import {
   ArrowLeft,
   Edit,
@@ -15,13 +17,25 @@ import {
   Star,
   TrendingUp,
   Archive,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { AttributeManagerModal } from '@/components/vendor/AttributeManagerModal';
+import { ProductVariantManagerModal } from '@/components/vendor/ProductVariantManagerModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const productsData: Record<string, any> = {
   '1': {
@@ -92,27 +106,80 @@ const statusStyles: Record<string, string> = {
   archived: 'bg-muted text-muted-foreground border-muted',
 };
 
+const getProductStatus = (qty: number) => {
+  if (qty === 0) return 'out_of_stock';
+  if (qty <= 10) return 'low_stock';
+  return 'active';
+};
+
 export default function ProductView() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const product = productsData[productId || '1'] || productsData['1'];
-  const profit = product.price - product.cost;
-  const margin = ((profit / product.price) * 100).toFixed(1);
+  const { data: product, isLoading } = useProductDetailQuery(productId || "");
+  const deleteMutation = useDeleteProductMutation();
+  const updateMutation = useUpdateProductMutation();
 
-  const handleDuplicate = () => {
-    toast({ title: 'Product Duplicated', description: 'A copy of this product has been created' });
+  const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-muted-foreground animate-pulse font-medium text-lg">Loading product details...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <p className="text-muted-foreground font-medium text-lg">Product not found</p>
+        <Button onClick={() => navigate('/products')}>Back to Products</Button>
+      </div>
+    );
+  }
+
+  const status = getProductStatus(product.quantity || 0);
+  const sku = product.variants?.[0]?.sku || 'N/A';
+  const categoryName = product.category?.name || 'N/A';
+  const subcategoryName = product.subCategory?.name || 'N/A';
+  const imagesList = Array.isArray(product.images)
+    ? product.images
+    : (typeof product.images === 'string'
+      ? JSON.parse(product.images)
+      : []);
+
+  const cost = 0;
+  const profit = Number(product.price) - cost;
+  const margin = product.price ? ((profit / Number(product.price)) * 100).toFixed(1) : '0';
+  const stats = {
+    views: 1234,
+    orders: 89,
+    revenue: 11579.11,
+    rating: product.rating || 4.5,
+    reviews: product.numReviews || 12,
   };
+
 
   const handleArchive = () => {
     toast({ title: 'Product Archived', description: 'Product has been moved to archive' });
     navigate('/products');
   };
 
-  const handleDelete = () => {
-    toast({ title: 'Product Deleted', description: 'Product has been deleted' });
-    navigate('/products');
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync(product.id);
+      toast({ title: 'Product Deleted', description: 'Product has been deleted successfully' });
+      navigate('/products');
+    } catch (err: any) {
+      toast({
+        title: 'Error Deleting Product',
+        description: err.message || 'Something went wrong.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -130,11 +197,11 @@ export default function ProductView() {
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl lg:text-3xl font-bold">{product.name}</h1>
-              <Badge variant="outline" className={cn('border', statusStyles[product.status])}>
-                {product.status.replace('_', ' ')}
+              <Badge variant="outline" className={cn('border', statusStyles[status])}>
+                {status.replace('_', ' ')}
               </Badge>
             </div>
-            <p className="text-muted-foreground mt-1">SKU: {product.sku}</p>
+            <p className="text-muted-foreground mt-1">SKU: {sku}</p>
           </div>
         </div>
 
@@ -143,14 +210,15 @@ export default function ProductView() {
             <Edit className="w-4 h-4 mr-2" />
             Edit Product
           </Button>
-          <Button variant="outline" onClick={handleDuplicate}>
-            <Copy className="w-4 h-4 mr-2" />
-            Duplicate
+          <Button variant="outline" onClick={() => setIsAttributeModalOpen(true)}>
+            <Tag className="w-4 h-4 mr-2" />
+            Attributes
           </Button>
-          <Button variant="outline">
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Preview
+          <Button variant="outline" onClick={() => setIsVariantModalOpen(true)}>
+            <Package className="w-4 h-4 mr-2" />
+            Variants
           </Button>
+
           <Button variant="outline" onClick={handleArchive}>
             <Archive className="w-4 h-4 mr-2" />
             Archive
@@ -176,7 +244,7 @@ export default function ProductView() {
                 <Eye className="w-5 h-5 text-info" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{product.stats.views.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{stats.views.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Views</p>
               </div>
             </div>
@@ -189,7 +257,7 @@ export default function ProductView() {
                 <ShoppingCart className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{product.stats.orders}</p>
+                <p className="text-2xl font-bold">{stats.orders}</p>
                 <p className="text-sm text-muted-foreground">Orders</p>
               </div>
             </div>
@@ -202,7 +270,7 @@ export default function ProductView() {
                 <DollarSign className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">${product.stats.revenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold">${stats.revenue.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Revenue</p>
               </div>
             </div>
@@ -215,8 +283,8 @@ export default function ProductView() {
                 <Star className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{product.stats.rating}</p>
-                <p className="text-sm text-muted-foreground">{product.stats.reviews} reviews</p>
+                <p className="text-2xl font-bold">{stats.rating}</p>
+                <p className="text-sm text-muted-foreground">{stats.reviews} reviews</p>
               </div>
             </div>
           </CardContent>
@@ -251,7 +319,7 @@ export default function ProductView() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {product.images.map((img: string, index: number) => (
+                  {imagesList.map((img: string, index: number) => (
                     <div key={index} className="aspect-square rounded-lg overflow-hidden border border-border">
                       <img src={img} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
                     </div>
@@ -303,14 +371,17 @@ export default function ProductView() {
                         </tr>
                       </thead>
                       <tbody>
-                        {product.variants.map((variant: any) => (
-                          <tr key={variant.id} className="border-b border-border last:border-0">
-                            <td className="py-3 font-medium">{variant.name}</td>
-                            <td className="py-3 text-muted-foreground font-mono text-sm">{variant.sku}</td>
-                            <td className="py-3">{variant.stock}</td>
-                            <td className="py-3">${variant.price.toFixed(2)}</td>
-                          </tr>
-                        ))}
+                        {product.variants?.map((variant: any) => {
+                          const variantName = variant.attributeValues?.map((av: any) => av.value).join(' / ') || 'Standard';
+                          return (
+                            <tr key={variant.id} className="border-b border-border last:border-0">
+                              <td className="py-3 font-medium">{variantName}</td>
+                              <td className="py-3 text-muted-foreground font-mono text-sm">{variant.sku || 'N/A'}</td>
+                              <td className="py-3">{variant.quantity}</td>
+                              <td className="py-3">${Number(variant.price).toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -338,18 +409,18 @@ export default function ProductView() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Price</span>
-                  <span className="font-semibold text-lg">${product.price.toFixed(2)}</span>
+                  <span className="font-semibold text-lg">${Number(product.price).toFixed(2)}</span>
                 </div>
-                {product.comparePrice && (
+                {product.discountPrice && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Compare at</span>
-                    <span className="line-through text-muted-foreground">${product.comparePrice.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Discount Price</span>
+                    <span className="text-muted-foreground">${Number(product.discountPrice).toFixed(2)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cost</span>
-                  <span>${product.cost.toFixed(2)}</span>
+                  <span>${cost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Profit</span>
@@ -381,14 +452,14 @@ export default function ProductView() {
                   <span className="text-muted-foreground">In Stock</span>
                   <span className={cn(
                     "font-semibold",
-                    product.stock <= product.lowStockThreshold && "text-warning"
+                    product.quantity <= 10 && "text-warning"
                   )}>
-                    {product.stock} units
+                    {product.quantity} units
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Low Stock Alert</span>
-                  <span>{product.lowStockThreshold} units</span>
+                  <span>10 units</span>
                 </div>
               </CardContent>
             </Card>
@@ -407,26 +478,37 @@ export default function ProductView() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Category</span>
-                  <span>{product.category}</span>
+                  <span>{categoryName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subcategory</span>
-                  <span>{product.subcategory}</span>
+                  <span>{subcategoryName}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Created</span>
-                  <span>{product.createdAt}</span>
+                  <span>{new Date(product.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Last Updated</span>
-                  <span>{product.updatedAt}</span>
+                  <span>{new Date(product.updatedAt).toLocaleDateString()}</span>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
       </div>
+      <ProductVariantManagerModal 
+        open={isVariantModalOpen}
+        onOpenChange={setIsVariantModalOpen}
+        productId={productId!}
+        existingVariants={product.variants || []}
+      />
+
+      <AttributeManagerModal 
+        open={isAttributeModalOpen} 
+        onOpenChange={setIsAttributeModalOpen} 
+      />
     </div>
   );
 }

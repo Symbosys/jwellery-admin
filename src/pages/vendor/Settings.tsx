@@ -27,7 +27,6 @@ const tabs = [
   { id: 'tax', label: 'GST & Tax Info', icon: FileText },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'team', label: 'Team Members', icon: Users },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
 ];
 
 export default function Settings() {
@@ -262,25 +261,7 @@ export default function Settings() {
             </Button>
           </TabsContent>
 
-          {/* Notifications */}
-          <TabsContent value="notifications" className="p-6 space-y-6">
-            <div className="space-y-4">
-              {[
-                { label: 'Order Notifications', description: 'Get notified for new orders' },
-                { label: 'Low Stock Alerts', description: 'Alert when products run low' },
-                { label: 'Payment Updates', description: 'Notify for payment status changes' },
-                { label: 'Marketing Emails', description: 'Receive tips and promotions' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                  <div>
-                    <p className="font-medium">{item.label}</p>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
-                  <Switch defaultChecked={i < 3} />
-                </div>
-              ))}
-            </div>
-          </TabsContent>
+
         </Tabs>
       </motion.div>
     </div>
