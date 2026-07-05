@@ -14,6 +14,7 @@ import Orders from "@/pages/vendor/Orders";
 import OrderDetails from "@/pages/vendor/OrderDetails";
 import Categories from "@/pages/vendor/Categories";
 import SubCategories from "@/pages/vendor/subCategories";
+import Brands from "@/pages/vendor/Brands";
 
 import Reviews from "@/pages/vendor/Reviews";
 import Customers from "@/pages/vendor/Customers";
@@ -50,6 +51,7 @@ function App() {
                   <Route path="/orders/:orderId" element={<OrderDetails />} />
                   <Route path="/categories" element={<Categories />} />
                   <Route path="/subcategories" element={<SubCategories />} />
+                  <Route path="/brands" element={<Brands />} />
 
                   <Route path="/customers/list" element={<Customers />} />
                   <Route path="/customers/reviews" element={<Reviews />} />

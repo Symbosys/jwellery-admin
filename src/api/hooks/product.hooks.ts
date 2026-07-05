@@ -26,7 +26,8 @@ export interface DBProduct {
   description: string | null;
   image: string;
   images: any; // Json (string[])
-  brand: string | null;
+  brandId: string | null;
+  brand: any;
   price: string | number;
   discountPrice: string | number | null;
   quantity: number;

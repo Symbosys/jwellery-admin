@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCategoriesQuery } from "@/api/hooks/category.hooks";
 import { useAttributesQuery } from "@/api/hooks/attribute.hooks";
+import { useBrandsQuery } from "@/api/hooks/brand.hooks";
 import {
   useProductDetailQuery,
   useCreateProductMutation,
@@ -93,6 +94,7 @@ export default function ProductForm() {
   );
   const { data: categoriesData } = useCategoriesQuery();
   const { data: attributes } = useAttributesQuery();
+  const { data: brandsData } = useBrandsQuery({ limit: 1000 });
 
   const createMutation = useCreateProductMutation();
   const updateMutation = useUpdateProductMutation();
@@ -104,6 +106,7 @@ export default function ProductForm() {
     sku: "",
     category: "",
     subcategory: "",
+    brandId: "",
     price: "",
     comparePrice: "",
     cost: "",
@@ -129,6 +132,7 @@ export default function ProductForm() {
         sku: product.variants?.[0]?.sku || "",
         category: product.categoryId || "",
         subcategory: product.subCategoryId || "",
+        brandId: product.brandId || "",
         price: String(product.price) || "",
         comparePrice: String(product.discountPrice || "") || "",
         cost: "",
@@ -212,6 +216,7 @@ export default function ProductForm() {
       images: images,
       categoryId: formData.category,
       subCategoryId: formData.subcategory || undefined,
+      brandId: formData.brandId || undefined,
     };
 
     try {
@@ -760,6 +765,27 @@ export default function ProductForm() {
                           </SelectItem>
                         ));
                       })()}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Brand</Label>
+                  <Select
+                    value={formData.brandId || undefined}
+                    onValueChange={(value) =>
+                      handleInputChange("brandId", value === "none" ? "" : value)
+                    }
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No brand</SelectItem>
+                      {brandsData?.brands?.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

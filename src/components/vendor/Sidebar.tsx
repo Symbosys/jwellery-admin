@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
   { icon: ShoppingCart, label: "Orders", path: "/orders" },
   { icon: FolderTree, label: "Categories", path: "/categories" },
   { icon: Layers, label: "Subcategories", path: "/subcategories" },
+  { icon: Store, label: "Brands", path: "/brands" },
   { 
     icon: Users, 
     label: "Customers", 
