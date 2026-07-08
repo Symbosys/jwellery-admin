@@ -74,7 +74,8 @@ export default function Login() {
     }
     
     try {
-      const result = await requestOtpMutation.mutateAsync({ phoneNumber });
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      const result = await requestOtpMutation.mutateAsync({ phoneNumber: formattedPhone });
       setOtpSent(true);
       toast({
         title: "OTP Sent",
@@ -101,7 +102,19 @@ export default function Login() {
     }
     
     try {
-      const result = await verifyOtpMutation.mutateAsync({ phoneNumber, otp });
+      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+      const result = await verifyOtpMutation.mutateAsync({ phoneNumber: formattedPhone, otp });
+      
+      // Enforce admin-only verification check
+      if (result.user?.role !== "ADMIN") {
+        toast({
+          title: "Access Denied",
+          description: "This portal is for admins only.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       login(result.token);
       toast({
         title: "Success",
