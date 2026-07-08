@@ -21,6 +21,7 @@ import Customers from "@/pages/vendor/Customers";
 import Inventory from "@/pages/vendor/Inventory";
 import Coupons from "@/pages/vendor/Coupons";
 import Banners from "@/pages/vendor/Banners";
+import Offer from "@/pages/vendor/offer";
 import Messages from "@/pages/vendor/Messages";
 import Analytics from "@/pages/vendor/Analytics";
 import Payments from "@/pages/vendor/Payments";
@@ -58,6 +59,7 @@ function App() {
                   <Route path="/inventory" element={<Inventory />} />
                   <Route path="/marketing/coupons" element={<Coupons />} />
                   <Route path="/marketing/banners" element={<Banners />} />
+                  <Route path="/marketing/offers" element={<Offer />} />
                   <Route path="/messages" element={<Messages />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/payments" element={<Payments />} />

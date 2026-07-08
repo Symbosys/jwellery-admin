@@ -57,7 +57,8 @@ const navItems: NavItem[] = [
     label: "Marketing", 
     subItems: [
       { label: "Coupons", path: "/marketing/coupons" },
-      { label: "Banners", path: "/marketing/banners" }
+      { label: "Banners", path: "/marketing/banners" },
+      { label: "Offers", path: "/marketing/offers" }
     ] 
   },
   { icon: MessageSquare, label: "Messages", path: "/messages" },
