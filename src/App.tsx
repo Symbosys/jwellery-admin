@@ -64,8 +64,8 @@ function App() {
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/payments" element={<Payments />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/login" element={<Login />} />
                 </Route>
+                <Route path="/login" element={<Login />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
