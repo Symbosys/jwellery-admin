@@ -20,6 +20,7 @@ import {
   Store,
   X,
   Boxes,
+  BookOpen,
 } from "lucide-react";
 import { useSidebarContext } from "@/context/SidebarContext";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ const navItems: NavItem[] = [
   { icon: MessageSquare, label: "Messages", path: "/messages" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: Wallet, label: "Payments", path: "/payments" },
+  { icon: BookOpen, label: "Blogs", path: "/blogs" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 

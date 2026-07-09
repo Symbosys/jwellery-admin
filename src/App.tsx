@@ -26,6 +26,7 @@ import Messages from "@/pages/vendor/Messages";
 import Analytics from "@/pages/vendor/Analytics";
 import Payments from "@/pages/vendor/Payments";
 import Settings from "@/pages/vendor/Settings";
+import Blogs from "@/pages/vendor/blogs";
 import NotFound from "@/pages/NotFound";
 import Login from "./pages/Login";
 
@@ -64,6 +65,7 @@ function App() {
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/payments" element={<Payments />} />
                   <Route path="/settings" element={<Settings />} />
+                  <Route path="/blogs" element={<Blogs />} />
                 </Route>
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<NotFound />} />
