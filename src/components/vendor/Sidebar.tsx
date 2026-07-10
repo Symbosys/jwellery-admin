@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -45,22 +45,22 @@ const navItems: NavItem[] = [
   { icon: FolderTree, label: "Categories", path: "/categories" },
   { icon: Layers, label: "Subcategories", path: "/subcategories" },
   { icon: Store, label: "Brands", path: "/brands" },
-  { 
-    icon: Users, 
-    label: "Customers", 
+  {
+    icon: Users,
+    label: "Customers",
     subItems: [
       { label: "Customers", path: "/customers/list" },
-      { label: "Reviews", path: "/customers/reviews" }
-    ] 
+      { label: "Reviews", path: "/customers/reviews" },
+    ],
   },
-  { 
-    icon: Megaphone, 
-    label: "Marketing", 
+  {
+    icon: Megaphone,
+    label: "Marketing",
     subItems: [
       { label: "Coupons", path: "/marketing/coupons" },
       { label: "Banners", path: "/marketing/banners" },
-      { label: "Offers", path: "/marketing/offers" }
-    ] 
+      { label: "Offers", path: "/marketing/offers" },
+    ],
   },
   { icon: MessageSquare, label: "Messages", path: "/messages" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
@@ -74,25 +74,29 @@ export function Sidebar() {
     useSidebarContext();
   const location = useLocation();
 
-  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>(() => {
-    const initialState: Record<string, boolean> = {};
-    navItems.forEach(item => {
-      if (item.subItems) {
-        const isActive = item.subItems.some(sub => location.pathname === sub.path);
-        initialState[item.label] = isActive;
-      }
-    });
-    return initialState;
-  });
+  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>(
+    () => {
+      const initialState: Record<string, boolean> = {};
+      navItems.forEach((item) => {
+        if (item.subItems) {
+          const isActive = item.subItems.some(
+            (sub) => location.pathname === sub.path,
+          );
+          initialState[item.label] = isActive;
+        }
+      });
+      return initialState;
+    },
+  );
 
   const toggleSubMenu = (label: string) => {
-    setOpenSubMenus(prev => ({ ...prev, [label]: !prev[label] }));
+    setOpenSubMenus((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
   const handleParentClick = (item: NavItem) => {
     if (isCollapsed) {
       toggleCollapsed();
-      setOpenSubMenus(prev => ({ ...prev, [item.label]: true }));
+      setOpenSubMenus((prev) => ({ ...prev, [item.label]: true }));
     } else {
       toggleSubMenu(item.label);
     }
@@ -154,38 +158,48 @@ export function Sidebar() {
             {navItems.map((item) => {
               if (item.subItems) {
                 const isOpen = openSubMenus[item.label] || false;
-                const isSubActive = item.subItems.some(sub => location.pathname === sub.path);
-                
+                const isSubActive = item.subItems.some(
+                  (sub) => location.pathname === sub.path,
+                );
+
                 return (
                   <li key={item.label} className="space-y-1">
                     <button
                       onClick={() => handleParentClick(item)}
                       className={cn(
                         "nav-link w-full text-left flex items-center justify-between",
-                        isSubActive ? "nav-link-active" : "nav-link-inactive"
+                        isSubActive ? "nav-link-active" : "nav-link-inactive",
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <item.icon className={cn("w-5 h-5 flex-shrink-0", isSubActive && "text-primary")} />
+                        <item.icon
+                          className={cn(
+                            "w-5 h-5 flex-shrink-0",
+                            isSubActive && "text-primary",
+                          )}
+                        />
                         {!isCollapsed && <span>{item.label}</span>}
                       </div>
                       {!isCollapsed && (
-                        <ChevronDown className={cn(
-                          "w-4 h-4 text-sidebar-foreground/55 transition-transform duration-250",
-                          isOpen && "rotate-180"
-                        )} />
+                        <ChevronDown
+                          className={cn(
+                            "w-4 h-4 text-sidebar-foreground/55 transition-transform duration-250",
+                            isOpen && "rotate-180",
+                          )}
+                        />
                       )}
                     </button>
-                    
+
                     {isOpen && !isCollapsed && (
-                      <motion.ul 
+                      <motion.ul
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                         className="pl-9 space-y-1"
                       >
                         {item.subItems.map((sub) => {
-                          const isSubItemActive = location.pathname === sub.path;
+                          const isSubItemActive =
+                            location.pathname === sub.path;
                           return (
                             <li key={sub.path}>
                               <NavLink
@@ -193,7 +207,9 @@ export function Sidebar() {
                                 onClick={closeMobile}
                                 className={cn(
                                   "nav-link text-xs py-1.5",
-                                  isSubItemActive ? "nav-link-active font-semibold" : "nav-link-inactive"
+                                  isSubItemActive
+                                    ? "nav-link-active font-semibold"
+                                    : "nav-link-inactive",
                                 )}
                               >
                                 {sub.label}

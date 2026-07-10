@@ -63,7 +63,7 @@ export default function Reviews() {
         setReplyText('');
         setReplyingReview(null);
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         toast({ 
           title: 'Error', 
           description: err.message || 'Failed to post reply.',
@@ -162,7 +162,7 @@ export default function Reviews() {
         <div className="bg-card border border-destructive/20 rounded-xl p-12 text-center text-muted-foreground shadow-soft">
           <Info className="w-10 h-10 mx-auto mb-3 text-destructive opacity-80" />
           <p className="font-semibold text-lg text-foreground">Failed to load reviews</p>
-          <p className="text-sm mt-1 text-destructive/80">{(error as any)?.message || "An unexpected error occurred."}</p>
+          <p className="text-sm mt-1 text-destructive/80">{error?.message || "An unexpected error occurred."}</p>
         </div>
       ) : filteredReviews.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center text-muted-foreground shadow-soft">
