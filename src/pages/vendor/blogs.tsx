@@ -45,10 +45,22 @@ import {
 } from "@/api/hooks/blog.hooks";
 
 const BLOG_PRESETS = [
-  { name: "Gym Workout", url: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600" },
-  { name: "Healthy Diet", url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600" },
-  { name: "Supplements", url: "https://images.unsplash.com/photo-1579722820308-d74e571900a9?w=600" },
-  { name: "Running", url: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600" }
+  {
+    name: "Gym Workout",
+    url: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600",
+  },
+  {
+    name: "Healthy Diet",
+    url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600",
+  },
+  {
+    name: "Supplements",
+    url: "https://images.unsplash.com/photo-1579722820308-d74e571900a9?w=600",
+  },
+  {
+    name: "Running",
+    url: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600",
+  },
 ];
 
 export default function Blogs() {
@@ -56,7 +68,9 @@ export default function Blogs() {
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -86,7 +100,9 @@ export default function Blogs() {
   const [blogTags, setBlogTags] = useState("");
   const [blogImage, setBlogImage] = useState("");
   const [blogFile, setBlogFile] = useState<File | null>(null);
-  const [blogImageMode, setBlogImageMode] = useState<"url" | "upload" | "preset">("preset");
+  const [blogImageMode, setBlogImageMode] = useState<
+    "url" | "upload" | "preset"
+  >("preset");
   const [blogActive, setBlogActive] = useState(true);
 
   // Edit states
@@ -99,8 +115,18 @@ export default function Blogs() {
   const [editTags, setEditTags] = useState("");
   const [editImage, setEditImage] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
-  const [editImageMode, setEditImageMode] = useState<"url" | "upload" | "preset">("preset");
+  const [editImageMode, setEditImageMode] = useState<
+    "url" | "upload" | "preset"
+  >("preset");
   const [editActive, setEditActive] = useState(true);
+
+  const processImageUrl = (url: string | null) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.startsWith("192.168."));
+    const baseUrl = isLocal ? "http://localhost:4000" : "https://protien-backend.vercel.app";
+    return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
 
   // Form Handlers
   const handleCreateBlog = async () => {
@@ -123,9 +149,14 @@ export default function Blogs() {
 
     try {
       const parsedTags = blogTags
-        ? blogTags.split(",").map((t) => t.trim()).filter(Boolean)
+        ? blogTags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
         : [];
-      const parsedReadTime = blogReadTime ? parseInt(blogReadTime, 10) : undefined;
+      const parsedReadTime = blogReadTime
+        ? parseInt(blogReadTime, 10)
+        : undefined;
 
       if (blogImageMode === "upload" && blogFile) {
         const formData = new FormData();
@@ -146,7 +177,10 @@ export default function Blogs() {
           excerpt: blogExcerpt.trim() || undefined,
           author: blogAuthor.trim() || "Admin",
           readTime: parsedReadTime,
-          image: blogImageMode === "preset" ? blogImage : blogImage.trim() || undefined,
+          image:
+            blogImageMode === "preset"
+              ? blogImage
+              : blogImage.trim() || undefined,
           isActive: blogActive,
           tags: parsedTags,
         });
@@ -172,7 +206,8 @@ export default function Blogs() {
     } catch (err: any) {
       toast({
         title: "Error Creating Blog",
-        description: err.response?.data?.message || err.message || "Something went wrong",
+        description:
+          err.response?.data?.message || err.message || "Something went wrong",
         variant: "destructive",
       });
     }
@@ -188,7 +223,11 @@ export default function Blogs() {
     setEditTags(blog.tags ? blog.tags.join(", ") : "");
     setEditImage(blog.image || "");
     setEditFile(null);
-    setEditImageMode(blog.image && blog.image.startsWith("https://images.unsplash.com") ? "preset" : "url");
+    setEditImageMode(
+      blog.image && blog.image.startsWith("https://images.unsplash.com")
+        ? "preset"
+        : "url",
+    );
     setEditActive(blog.isActive);
   };
 
@@ -213,9 +252,14 @@ export default function Blogs() {
 
     try {
       const parsedTags = editTags
-        ? editTags.split(",").map((t) => t.trim()).filter(Boolean)
+        ? editTags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
         : [];
-      const parsedReadTime = editReadTime ? parseInt(editReadTime, 10) : undefined;
+      const parsedReadTime = editReadTime
+        ? parseInt(editReadTime, 10)
+        : undefined;
 
       if (editImageMode === "upload" && editFile) {
         const formData = new FormData();
@@ -228,7 +272,10 @@ export default function Blogs() {
         formData.append("image", editFile);
         parsedTags.forEach((tag) => formData.append("tags[]", tag));
 
-        await updateBlogMutation.mutateAsync({ id: editBlog.id, data: formData });
+        await updateBlogMutation.mutateAsync({
+          id: editBlog.id,
+          data: formData,
+        });
       } else {
         await updateBlogMutation.mutateAsync({
           id: editBlog.id,
@@ -238,7 +285,8 @@ export default function Blogs() {
             excerpt: editExcerpt.trim() || null,
             author: editAuthor.trim(),
             readTime: parsedReadTime || null,
-            image: editImageMode === "preset" ? editImage : editImage.trim() || null,
+            image:
+              editImageMode === "preset" ? editImage : editImage.trim() || null,
             isActive: editActive,
             tags: parsedTags,
           },
@@ -254,7 +302,8 @@ export default function Blogs() {
     } catch (err: any) {
       toast({
         title: "Error Updating Blog",
-        description: err.response?.data?.message || err.message || "Something went wrong",
+        description:
+          err.response?.data?.message || err.message || "Something went wrong",
         variant: "destructive",
       });
     }
@@ -271,7 +320,8 @@ export default function Blogs() {
     } catch (err: any) {
       toast({
         title: "Error Deleting Blog",
-        description: err.response?.data?.message || err.message || "Something went wrong",
+        description:
+          err.response?.data?.message || err.message || "Something went wrong",
         variant: "destructive",
       });
     }
@@ -341,7 +391,8 @@ export default function Blogs() {
             <HelpCircle className="w-12 h-12 text-muted-foreground mx-auto" />
             <h3 className="font-semibold text-lg">No Blogs Found</h3>
             <p className="text-muted-foreground max-w-sm mx-auto">
-              Write your first blog post to share educational nutrition and fitness insights.
+              Write your first blog post to share educational nutrition and
+              fitness insights.
             </p>
             <Button onClick={() => setIsAddOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -365,7 +416,7 @@ export default function Blogs() {
                   <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-lg bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center border border-border">
                     {blog.image ? (
                       <img
-                        src={blog.image}
+                        src={processImageUrl(blog.image)}
                         alt={blog.title}
                         className="w-full h-full object-cover"
                       />
@@ -376,9 +427,15 @@ export default function Blogs() {
                     )}
                     <div className="absolute top-1 left-1">
                       {blog.isActive ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 block border border-white" title="Published" />
+                        <span
+                          className="w-2.5 h-2.5 rounded-full bg-green-500 block border border-white"
+                          title="Published"
+                        />
                       ) : (
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block border border-white" title="Draft" />
+                        <span
+                          className="w-2.5 h-2.5 rounded-full bg-amber-500 block border border-white"
+                          title="Draft"
+                        />
                       )}
                     </div>
                   </div>
@@ -392,7 +449,11 @@ export default function Blogs() {
                         </h3>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 flex-shrink-0"
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -458,7 +519,9 @@ export default function Blogs() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+            onClick={() =>
+              setPage((p) => Math.min(pagination.totalPages, p + 1))
+            }
             disabled={page === pagination.totalPages}
           >
             Next
@@ -586,10 +649,16 @@ export default function Blogs() {
                       onClick={() => setBlogImage(preset.url)}
                       className={cn(
                         "aspect-square rounded border-2 border-border overflow-hidden relative transition-all",
-                        blogImage === preset.url ? "border-primary scale-95" : "hover:border-primary/50"
+                        blogImage === preset.url
+                          ? "border-primary scale-95"
+                          : "hover:border-primary/50",
                       )}
                     >
-                      <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                      <img
+                        src={preset.url}
+                        alt={preset.name}
+                        className="w-full h-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>
@@ -615,10 +684,18 @@ export default function Blogs() {
                       if (e.target.files?.[0]) setBlogFile(e.target.files[0]);
                     }}
                   />
-                  <Label htmlFor="blog-image-file" className="cursor-pointer block">
+                  <Label
+                    htmlFor="blog-image-file"
+                    className="cursor-pointer block"
+                  >
                     <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                    <span className="block text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</span>
+                    <span className="font-semibold text-primary">
+                      Click to upload
+                    </span>{" "}
+                    or drag and drop
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      PNG, JPG up to 5MB
+                    </span>
                   </Label>
                   {blogFile && (
                     <p className="mt-2 text-xs text-muted-foreground font-medium">
@@ -640,7 +717,11 @@ export default function Blogs() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setIsAddOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="button" onClick={handleCreateBlog}>
@@ -652,7 +733,10 @@ export default function Blogs() {
       </Dialog>
 
       {/* Edit Blog Dialog */}
-      <Dialog open={!!editBlog} onOpenChange={(open) => !open && setEditBlog(null)}>
+      <Dialog
+        open={!!editBlog}
+        onOpenChange={(open) => !open && setEditBlog(null)}
+      >
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Blog Post</DialogTitle>
@@ -712,7 +796,9 @@ export default function Blogs() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-excerpt">Excerpt / Summary (Optional)</Label>
+                <Label htmlFor="edit-excerpt">
+                  Excerpt / Summary (Optional)
+                </Label>
                 <Textarea
                   id="edit-excerpt"
                   value={editExcerpt}
@@ -772,10 +858,16 @@ export default function Blogs() {
                         onClick={() => setEditImage(preset.url)}
                         className={cn(
                           "aspect-square rounded border-2 border-border overflow-hidden relative transition-all",
-                          editImage === preset.url ? "border-primary scale-95" : "hover:border-primary/50"
+                          editImage === preset.url
+                            ? "border-primary scale-95"
+                            : "hover:border-primary/50",
                         )}
                       >
-                        <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                        <img
+                          src={preset.url}
+                          alt={preset.name}
+                          className="w-full h-full object-cover"
+                        />
                       </button>
                     ))}
                   </div>
@@ -801,10 +893,18 @@ export default function Blogs() {
                         if (e.target.files?.[0]) setEditFile(e.target.files[0]);
                       }}
                     />
-                    <Label htmlFor="edit-blog-image-file" className="cursor-pointer block">
+                    <Label
+                      htmlFor="edit-blog-image-file"
+                      className="cursor-pointer block"
+                    >
                       <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <span className="font-semibold text-primary">Click to upload</span> or drag and drop
-                      <span className="block text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB</span>
+                      <span className="font-semibold text-primary">
+                        Click to upload
+                      </span>{" "}
+                      or drag and drop
+                      <span className="block text-xs text-muted-foreground mt-1">
+                        PNG, JPG up to 5MB
+                      </span>
                     </Label>
                     {editFile && (
                       <p className="mt-2 text-xs text-muted-foreground font-medium">
@@ -826,7 +926,11 @@ export default function Blogs() {
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" type="button" onClick={() => setEditBlog(null)}>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setEditBlog(null)}
+                >
                   Cancel
                 </Button>
                 <Button type="button" onClick={handleUpdateBlog}>
