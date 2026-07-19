@@ -12,6 +12,7 @@ import {
   XCircle,
   HelpCircle,
   Package,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,6 +112,19 @@ export default function Brands() {
       return;
     }
 
+    const isImageMissing = 
+      (brandImageMode === "upload" && !brandFile) || 
+      (brandImageMode !== "upload" && !brandImage.trim());
+
+    if (isImageMissing) {
+      toast({
+        title: "Validation Error",
+        description: "Brand Logo is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       if (brandImageMode === "upload" && brandFile) {
         const formData = new FormData();
@@ -160,6 +174,19 @@ export default function Brands() {
       toast({
         title: "Validation Error",
         description: "Brand Name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isImageMissing = 
+      (editImageMode === "upload" && !editFile) || 
+      (editImageMode !== "upload" && !editImage.trim());
+
+    if (isImageMissing) {
+      toast({
+        title: "Validation Error",
+        description: "Brand Logo is required",
         variant: "destructive",
       });
       return;
@@ -567,10 +594,11 @@ export default function Brands() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>
+              <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} disabled={createBrandMutation.isPending}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleCreateBrand}>
+              <Button type="button" onClick={handleCreateBrand} disabled={createBrandMutation.isPending}>
+                {createBrandMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Brand
               </Button>
             </div>
@@ -709,10 +737,11 @@ export default function Brands() {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" type="button" onClick={() => setEditBrand(null)}>
+              <Button variant="outline" type="button" onClick={() => setEditBrand(null)} disabled={updateBrandMutation.isPending}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleUpdateBrand}>
+              <Button type="button" onClick={handleUpdateBrand} disabled={updateBrandMutation.isPending}>
+                {updateBrandMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
             </div>

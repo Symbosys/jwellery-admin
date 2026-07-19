@@ -1,32 +1,76 @@
 import { motion } from 'framer-motion';
-import { 
-  ShoppingCart, 
-  DollarSign, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Package, 
+import {
+  ShoppingCart,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Package,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Loader2
 } from 'lucide-react';
 import { StatCard } from '@/components/vendor/StatCard';
 import { SalesChart } from '@/components/vendor/SalesChart';
 import { OrdersChart } from '@/components/vendor/OrdersChart';
 import { AlertsPanel } from '@/components/vendor/AlertsPanel';
 import { RecentOrders } from '@/components/vendor/RecentOrders';
-
-const stats = [
-  { title: 'Total Orders', value: '2,847', change: 12.5, icon: ShoppingCart },
-  { title: 'Total Sales', value: '$84,254', change: 8.2, icon: DollarSign },
-  { title: 'Pending Orders', value: '124', change: -3.1, icon: Clock },
-  { title: 'Completed', value: '2,156', change: 15.3, icon: CheckCircle },
-  { title: 'Cancelled', value: '47', change: -18.2, icon: XCircle },
-  { title: 'Products Listed', value: '342', change: 5.4, icon: Package },
-  { title: 'Low Stock Items', value: '18', change: 2.1, icon: AlertTriangle },
-  { title: 'Return Requests', value: '12', change: -8.5, icon: RotateCcw },
-];
+import { useAdminDashboardStatsQuery } from '@/api/hooks/admin.hooks';
 
 export default function Dashboard() {
+  const { data: statsData, isLoading } = useAdminDashboardStatsQuery();
+
+  const stats = [
+    { 
+      title: 'Total Orders', 
+      value: statsData ? statsData.totalOrders.value.toLocaleString() : '0', 
+      change: statsData?.totalOrders.change, 
+      icon: ShoppingCart 
+    },
+    { 
+      title: 'Total Sales', 
+      value: statsData ? `₹${statsData.totalSales.value.toLocaleString()}` : '₹0', 
+      change: statsData?.totalSales.change, 
+      icon: DollarSign 
+    },
+    { 
+      title: 'Pending Orders', 
+      value: statsData ? statsData.pendingOrders.value.toLocaleString() : '0', 
+      change: statsData?.pendingOrders.change, 
+      icon: Clock 
+    },
+    { 
+      title: 'Completed', 
+      value: statsData ? statsData.completedOrders.value.toLocaleString() : '0', 
+      change: statsData?.completedOrders.change, 
+      icon: CheckCircle 
+    },
+    { 
+      title: 'Cancelled', 
+      value: statsData ? statsData.cancelledOrders.value.toLocaleString() : '0', 
+      change: statsData?.cancelledOrders.change, 
+      icon: XCircle 
+    },
+    { 
+      title: 'Products Listed', 
+      value: statsData ? statsData.totalProducts.value.toLocaleString() : '0', 
+      change: undefined, 
+      icon: Package 
+    },
+    { 
+      title: 'Low Stock Items', 
+      value: statsData ? statsData.lowStockItems.value.toLocaleString() : '0', 
+      change: undefined, 
+      icon: AlertTriangle 
+    },
+    { 
+      title: 'Return Requests', 
+      value: statsData ? statsData.returnRequests.value.toLocaleString() : '0', 
+      change: undefined, 
+      icon: RotateCcw 
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -40,18 +84,27 @@ export default function Dashboard() {
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <StatCard
-            key={stat.title}
-            title={stat.title}
-            value={stat.value}
-            change={stat.change}
-            icon={stat.icon}
-            delay={index * 0.05}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48 bg-card border border-border rounded-xl">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading dashboard stats…</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {stats.map((stat, index) => (
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              change={stat.change}
+              icon={stat.icon}
+              delay={index * 0.05}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Charts Row */}
       <div className="grid lg:grid-cols-3 gap-6">
@@ -71,3 +124,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

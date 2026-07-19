@@ -22,6 +22,7 @@ import {
   ShoppingBag,
   Edit,
   RotateCcw,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,10 +47,10 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { 
-  useOrderDetailQuery, 
-  useUpdateOrderStatusMutation, 
-  useUpdateOrderPaymentStatusMutation 
+import {
+  useOrderDetailQuery,
+  useUpdateOrderStatusMutation,
+  useUpdateOrderPaymentStatusMutation
 } from '@/api/hooks/order.hooks';
 
 const statusConfig = {
@@ -83,9 +84,9 @@ export default function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const { data: order, isLoading, error } = useOrderDetailQuery(orderId || '');
-  
+
   const updateStatusMutation = useUpdateOrderStatusMutation();
   const updatePaymentStatusMutation = useUpdateOrderPaymentStatusMutation();
 
@@ -201,7 +202,7 @@ export default function OrderDetails() {
     { status: 'Shipped', date: order.shippedAt ? new Date(order.shippedAt).toLocaleString() : '', completed: ['SHIPPED', 'DELIVERED'].includes(order.status), description: 'Package handed to carrier' },
     { status: 'Delivered', date: order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '', completed: order.status === 'DELIVERED', description: 'Package delivered to customer' },
   ];
-  
+
   if (order.status === 'CANCELLED') {
     timeline.push({ status: 'Cancelled', date: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString() : '', completed: true, description: 'Order was cancelled' });
   }
@@ -339,8 +340,8 @@ export default function OrderDetails() {
                         <p className="text-sm text-muted-foreground mt-1">Qty: {item.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold">${Number(item.totalPrice).toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">${Number(item.unitPrice).toFixed(2)} each</p>
+                        <p className="font-semibold">₹{Number(item.totalPrice).toFixed(2)}</p>
+                        <p className="text-sm text-muted-foreground">₹{Number(item.unitPrice).toFixed(2)} each</p>
                       </div>
                     </div>
                   ))}
@@ -352,26 +353,26 @@ export default function OrderDetails() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>${Number(order.subtotal).toFixed(2)}</span>
+                    <span>₹{Number(order.subtotal).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span>{Number(order.shippingCharge) > 0 ? `$${Number(order.shippingCharge).toFixed(2)}` : 'Free'}</span>
+                    <span>{Number(order.shippingCharge) > 0 ? `₹${Number(order.shippingCharge).toFixed(2)}` : 'Free'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax</span>
-                    <span>${Number(order.tax).toFixed(2)}</span>
+                    <span>₹{Number(order.tax).toFixed(2)}</span>
                   </div>
                   {Number(order.discount) > 0 && (
                     <div className="flex justify-between text-success">
                       <span>Discount</span>
-                      <span>-${Number(order.discount).toFixed(2)}</span>
+                      <span>-₹{Number(order.discount).toFixed(2)}</span>
                     </div>
                   )}
                   <Separator className="my-2" />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span className="text-primary">${Number(order.totalAmount).toFixed(2)}</span>
+                    <span className="text-primary">₹{Number(order.totalAmount).toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -521,18 +522,79 @@ export default function OrderDetails() {
             transition={{ delay: 0.25 }}
           >
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-5 h-5 text-primary" />
                   Shipping Address
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed">
-                  {order.shippingName}<br />
-                  {order.shippingAddress}<br />
-                  {order.shippingCity}, {order.shippingState} {order.shippingPincode}
-                </p>
+              <CardContent className="space-y-4">
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground">{order.shippingName}</p>
+                    {order.address?.type && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0.2">
+                        {order.address.type}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground">{order.shippingAddress}</p>
+                  {order.address?.locality && (
+                    <p className="text-muted-foreground">Locality: {order.address.locality}</p>
+                  )}
+                  <p className="text-muted-foreground">
+                    {order.shippingCity}, {order.shippingState} - {order.shippingPincode}
+                  </p>
+                  <p className="text-muted-foreground mt-2 font-medium flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5" />
+                    {order.shippingPhone}
+                  </p>
+                </div>
+
+                {(order.latitude || order.longitude || order.address?.latitude || order.address?.longitude) && (
+                  <div className="pt-3 border-t border-border space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                      Geographic Coordinates
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-muted/50 p-2 rounded-lg border border-border">
+                        <span className="text-[10px] text-muted-foreground block">Latitude</span>
+                        <span className="font-mono font-medium">
+                          {order.latitude || order.address?.latitude || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="bg-muted/50 p-2 rounded-lg border border-border">
+                        <span className="text-[10px] text-muted-foreground block">Longitude</span>
+                        <span className="font-mono font-medium">
+                          {order.longitude || order.address?.longitude || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {(order.latitude && order.longitude) && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${order.latitude},${order.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1 font-medium"
+                      >
+                        View location on Google Maps
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                    {(!order.latitude || !order.longitude) && (order.address?.latitude && order.address?.longitude) && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${order.address.latitude},${order.address.longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-1 font-medium"
+                      >
+                        View location on Google Maps
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

@@ -7,7 +7,8 @@ import {
   Trash2, 
   Folder,
   Info,
-  Tag
+  Tag,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,6 +87,10 @@ export default function SubCategories() {
       toast({ title: 'Validation Error', description: 'Subcategory Name is required', variant: 'destructive' });
       return;
     }
+    if (!subImage) {
+      toast({ title: 'Validation Error', description: 'Subcategory Image is required', variant: 'destructive' });
+      return;
+    }
     try {
       const formData = new FormData();
       formData.append('name', subName.trim());
@@ -117,6 +122,10 @@ export default function SubCategories() {
     }
     if (!editParentCategoryId) {
       toast({ title: 'Validation Error', description: 'Parent Category is required', variant: 'destructive' });
+      return;
+    }
+    if (!editSub.image && !editSubImageFile) {
+      toast({ title: 'Validation Error', description: 'Subcategory Image is required', variant: 'destructive' });
       return;
     }
     try {
@@ -296,10 +305,11 @@ export default function SubCategories() {
               />
             </div>
             <div className="flex gap-3 pt-4 justify-end">
-              <Button variant="outline" onClick={() => setIsAddSubOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddSubOpen(false)} disabled={createSubMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateSubCategory}>
+              <Button onClick={handleCreateSubCategory} disabled={createSubMutation.isPending}>
+                {createSubMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Create Subcategory
               </Button>
             </div>
@@ -365,10 +375,11 @@ export default function SubCategories() {
               />
             </div>
             <div className="flex gap-3 pt-4 justify-end">
-              <Button variant="outline" onClick={() => setEditSub(null)}>
+              <Button variant="outline" onClick={() => setEditSub(null)} disabled={updateSubMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateSubCategory}>
+              <Button onClick={handleUpdateSubCategory} disabled={updateSubMutation.isPending}>
+                {updateSubMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
             </div>

@@ -43,6 +43,22 @@ export interface DBOrder {
   createdAt: string;
   updatedAt: string;
   items?: DBOrderItem[];
+  longitude?: string | null;
+  latitude?: string | null;
+  addressId?: string | null;
+  address?: {
+    id: string;
+    name: string;
+    mobile: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    locality?: string | null;
+    longitude?: number | null;
+    latitude?: number | null;
+    type?: string;
+  } | null;
 }
 
 export const orderKeys = {

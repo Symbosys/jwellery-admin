@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Star, 
-  TrendingUp, 
+import {
+  Star,
+  TrendingUp,
   TrendingDown,
   Truck,
   XCircle,
@@ -18,10 +18,10 @@ import { useTheme } from '@/context/ThemeContext';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import {
-  useAnalyticsOverviewQuery,
-  usePerformanceChartQuery,
-  useProductAnalyticsQuery
-} from '@/api/hooks/analytics.hooks';
+  useAdminAnalyticsOverviewQuery,
+  useAdminPerformanceChartQuery,
+  useAdminProductAnalyticsQuery
+} from '@/api/hooks/admin.hooks';
 
 export default function Analytics() {
   const { theme } = useTheme();
@@ -29,56 +29,56 @@ export default function Analytics() {
   const [range, setRange] = useState<'7d' | '30d' | '12m'>('30d');
 
   // Queries
-  const { data: overviewData, isLoading: isLoadingOverview } = useAnalyticsOverviewQuery({ range });
-  const { data: performanceChartData, isLoading: isLoadingChart } = usePerformanceChartQuery({ range });
-  const { data: productAnalyticsData, isLoading: isLoadingProducts } = useProductAnalyticsQuery({ limit: 5 });
+  const { data: overviewData, isLoading: isLoadingOverview } = useAdminAnalyticsOverviewQuery({ range });
+  const { data: performanceChartData, isLoading: isLoadingChart } = useAdminPerformanceChartQuery({ range });
+  const { data: productAnalyticsData, isLoading: isLoadingProducts } = useAdminProductAnalyticsQuery({ limit: 5 });
 
   const metricsList = [
-    { 
-      label: 'Total Revenue', 
-      value: overviewData ? `$${Number(overviewData.metrics.sales.value).toLocaleString()}` : '$0', 
+    {
+      label: 'Total Revenue',
+      value: overviewData ? `₹${Number(overviewData.metrics.sales.value).toLocaleString()}` : '₹0',
       icon: TrendingUp,
-      trend: overviewData?.metrics.sales.trend || 0, 
+      trend: overviewData?.metrics.sales.trend || 0,
       color: 'text-primary',
       description: overviewData?.metrics.sales.description || 'Total revenue'
     },
-    { 
-      label: 'Total Orders', 
-      value: overviewData?.metrics.orders.value || 0, 
+    {
+      label: 'Total Orders',
+      value: overviewData?.metrics.orders.value || 0,
       icon: ShoppingBag,
-      trend: overviewData?.metrics.orders.trend || 0, 
+      trend: overviewData?.metrics.orders.trend || 0,
       color: 'text-sky-500',
       description: overviewData?.metrics.orders.description || 'Orders count'
     },
-    { 
-      label: 'Overall Rating', 
-      value: overviewData?.metrics.rating.value || '0.0', 
-      icon: Star, 
-      trend: overviewData?.metrics.rating.trend || 0, 
+    {
+      label: 'Overall Rating',
+      value: overviewData?.metrics.rating.value || '0.0',
+      icon: Star,
+      trend: overviewData?.metrics.rating.trend || 0,
       color: 'text-warning',
       description: overviewData?.metrics.rating.description || 'No reviews yet'
     },
-    { 
-      label: 'On-Time Delivery', 
-      value: overviewData?.metrics.delivery.value || '0%', 
-      icon: Truck, 
-      trend: overviewData?.metrics.delivery.trend || 0, 
+    {
+      label: 'On-Time Delivery',
+      value: overviewData?.metrics.delivery.value || '0%',
+      icon: Truck,
+      trend: overviewData?.metrics.delivery.trend || 0,
       color: 'text-success',
       description: overviewData?.metrics.delivery.description || 'Target: 95%'
     },
-    { 
-      label: 'Cancellation Rate', 
-      value: overviewData?.metrics.cancellation.value || '0%', 
-      icon: XCircle, 
-      trend: overviewData?.metrics.cancellation.trend || 0, 
+    {
+      label: 'Cancellation Rate',
+      value: overviewData?.metrics.cancellation.value || '0%',
+      icon: XCircle,
+      trend: overviewData?.metrics.cancellation.trend || 0,
       color: 'text-destructive',
       description: overviewData?.metrics.cancellation.description || 'Target: <2%'
     },
-    { 
-      label: 'Response Time', 
-      value: overviewData?.metrics.responseTime.value || '0h', 
-      icon: Clock, 
-      trend: overviewData?.metrics.responseTime.trend || 0, 
+    {
+      label: 'Response Time',
+      value: overviewData?.metrics.responseTime.value || '0h',
+      icon: Clock,
+      trend: overviewData?.metrics.responseTime.trend || 0,
       color: 'text-indigo-500',
       description: overviewData?.metrics.responseTime.description || 'Target: <4h'
     },
@@ -105,8 +105,8 @@ export default function Analytics() {
               onClick={() => setRange(r)}
               className={cn(
                 "px-3 py-1.5 text-xs font-semibold rounded-md transition-all",
-                range === r 
-                  ? "bg-background text-foreground shadow-sm font-bold" 
+                range === r
+                  ? "bg-background text-foreground shadow-sm font-bold"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -243,18 +243,18 @@ export default function Analytics() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={performanceChartData || []}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'} 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'}
                     vertical={false}
                   />
-                  <XAxis 
-                    dataKey="month" 
+                  <XAxis
+                    dataKey="month"
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
                   />
-                  <YAxis 
+                  <YAxis
                     axisLine={false}
                     tickLine={false}
                     tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
@@ -341,7 +341,7 @@ export default function Analytics() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right text-foreground font-semibold">
-                      ${Number(item.revenue).toLocaleString()}
+                      ₹{Number(item.revenue).toLocaleString()}
                     </td>
                   </tr>
                 ))}

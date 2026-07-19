@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Plus, 
-  Trash2, 
-  Percent, 
-  Tag, 
-  Users, 
-  TrendingUp, 
+import {
+  Plus,
+  Trash2,
+  Percent,
+  Tag,
+  Users,
+  TrendingUp,
   Search,
   Calendar,
   Info
@@ -104,7 +104,7 @@ export default function Coupons() {
     });
   };
 
-  const filteredCoupons = coupons.filter(c => 
+  const filteredCoupons = coupons.filter(c =>
     c.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -156,7 +156,7 @@ export default function Coupons() {
           </div>
           <div>
             <p className="text-2xl font-bold">
-              ${coupons.reduce((sum, c) => sum + c.totalDiscountClaimed, 0).toLocaleString()}
+              ₹{coupons.reduce((sum, c) => sum + c.totalDiscountClaimed, 0).toLocaleString()}
             </p>
             <p className="text-sm text-muted-foreground">Total Saved by Users</p>
           </div>
@@ -223,13 +223,13 @@ export default function Coupons() {
                             <Percent className="w-3.5 h-3.5" />
                           </>
                         ) : (
-                          <span>${coupon.value}</span>
+                          <span>₹{coupon.value}</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-center">${coupon.minSpend}</td>
+                    <td className="py-3.5 px-4 text-center">₹{coupon.minSpend}</td>
                     <td className="py-3.5 px-4 text-center font-semibold text-foreground">{coupon.usageCount}</td>
-                    <td className="py-3.5 px-4 text-center text-foreground font-semibold">${coupon.totalDiscountClaimed}</td>
+                    <td className="py-3.5 px-4 text-center text-foreground font-semibold">₹{coupon.totalDiscountClaimed}</td>
                     <td className="py-3.5 px-4 text-center">
                       <div className="inline-flex items-center gap-1.5 text-xs">
                         <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
@@ -239,17 +239,17 @@ export default function Coupons() {
                     <td className="py-3.5 px-4 text-center">
                       <span className={cn(
                         "badge text-[10px] font-bold px-2.5 py-0.5 rounded-full border",
-                        coupon.status === 'ACTIVE' 
-                          ? "bg-success/10 text-success border-success/30" 
+                        coupon.status === 'ACTIVE'
+                          ? "bg-success/10 text-success border-success/30"
                           : "bg-destructive/10 text-destructive border-destructive/30"
                       )}>
                         {coupon.status}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-destructive hover:bg-destructive/10"
                         onClick={() => handleDeleteCoupon(coupon.id)}
                         disabled={deleteMutation.isPending}
@@ -274,9 +274,9 @@ export default function Coupons() {
           <form onSubmit={handleCreateCoupon} className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="coupon-code">Coupon Code *</Label>
-              <Input 
+              <Input
                 id="coupon-code"
-                placeholder="e.g. EXTRA20" 
+                placeholder="e.g. EXTRA20"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 className="font-mono uppercase font-bold text-foreground"
@@ -312,10 +312,10 @@ export default function Coupons() {
 
               <div className="space-y-2">
                 <Label htmlFor="coupon-value">Value *</Label>
-                <Input 
+                <Input
                   id="coupon-value"
                   type="number"
-                  placeholder={type === 'PERCENT' ? '15%' : '$20'}
+                  placeholder={type === 'PERCENT' ? '15%' : '₹20'}
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                 />
@@ -324,8 +324,8 @@ export default function Coupons() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="coupon-min-spend">Minimum Spend ($)</Label>
-                <Input 
+                <Label htmlFor="coupon-min-spend">Minimum Spend (₹)</Label>
+                <Input
                   id="coupon-min-spend"
                   type="number"
                   placeholder="0"
@@ -336,7 +336,7 @@ export default function Coupons() {
 
               <div className="space-y-2">
                 <Label htmlFor="coupon-expiry">Expiry Date *</Label>
-                <Input 
+                <Input
                   id="coupon-expiry"
                   type="date"
                   value={expiryDate}

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  MoreHorizontal, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Plus,
+  Filter,
+  MoreHorizontal,
+  Edit,
+  Trash2,
   Eye,
   ChevronDown,
   Upload,
@@ -286,7 +286,7 @@ export default function Products() {
                           {product.quantity}
                         </span>
                       </td>
-                      <td className="px-5 py-4 font-medium">${Number(product.price).toFixed(2)}</td>
+                      <td className="px-5 py-4 font-medium">₹{Number(product.price).toFixed(2)}</td>
                       <td className="px-5 py-4">
                         <span className={cn(statusStyles[status as keyof typeof statusStyles])}>
                           {statusLabels[status as keyof typeof statusLabels]}
@@ -302,18 +302,18 @@ export default function Products() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => handleView(product.id)}>
                               <Eye className="mr-2 h-4 w-4" /> View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(product.id)}>
-                          <Edit className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </motion.tr>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(product.id)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </motion.tr>
                   );
                 })
               )}
@@ -333,9 +333,9 @@ export default function Products() {
         </div>
       </motion.div>
 
-      <AttributeManagerModal 
-        open={isAttributeModalOpen} 
-        onOpenChange={setIsAttributeModalOpen} 
+      <AttributeManagerModal
+        open={isAttributeModalOpen}
+        onOpenChange={setIsAttributeModalOpen}
       />
     </div>
   );

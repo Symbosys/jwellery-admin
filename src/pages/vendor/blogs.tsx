@@ -1,29 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   MoreHorizontal,
   Edit,
   Trash2,
-  Upload,
   Search,
-  CheckCircle,
-  XCircle,
   HelpCircle,
   Eye,
   Clock,
   User,
-  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,39 +22,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   useBlogsQuery,
-  useCreateBlogMutation,
-  useUpdateBlogMutation,
   useDeleteBlogMutation,
   DBBlog,
 } from "@/api/hooks/blog.hooks";
 
-const BLOG_PRESETS = [
-  {
-    name: "Gym Workout",
-    url: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600",
-  },
-  {
-    name: "Healthy Diet",
-    url: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600",
-  },
-  {
-    name: "Supplements",
-    url: "https://images.unsplash.com/photo-1579722820308-d74e571900a9?w=600",
-  },
-  {
-    name: "Running",
-    url: "https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600",
-  },
-];
-
 export default function Blogs() {
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Search & Filter state
@@ -86,39 +53,7 @@ export default function Blogs() {
   const pagination = blogsData?.pagination;
 
   // Mutations
-  const createBlogMutation = useCreateBlogMutation();
-  const updateBlogMutation = useUpdateBlogMutation();
   const deleteBlogMutation = useDeleteBlogMutation();
-
-  // Dialog & Form States
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [blogTitle, setBlogTitle] = useState("");
-  const [blogContent, setBlogContent] = useState("");
-  const [blogExcerpt, setBlogExcerpt] = useState("");
-  const [blogAuthor, setBlogAuthor] = useState("Admin");
-  const [blogReadTime, setBlogReadTime] = useState("");
-  const [blogTags, setBlogTags] = useState("");
-  const [blogImage, setBlogImage] = useState("");
-  const [blogFile, setBlogFile] = useState<File | null>(null);
-  const [blogImageMode, setBlogImageMode] = useState<
-    "url" | "upload" | "preset"
-  >("preset");
-  const [blogActive, setBlogActive] = useState(true);
-
-  // Edit states
-  const [editBlog, setEditBlog] = useState<DBBlog | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [editExcerpt, setEditExcerpt] = useState("");
-  const [editAuthor, setEditAuthor] = useState("");
-  const [editReadTime, setEditReadTime] = useState("");
-  const [editTags, setEditTags] = useState("");
-  const [editImage, setEditImage] = useState("");
-  const [editFile, setEditFile] = useState<File | null>(null);
-  const [editImageMode, setEditImageMode] = useState<
-    "url" | "upload" | "preset"
-  >("preset");
-  const [editActive, setEditActive] = useState(true);
 
   const processImageUrl = (url: string | null) => {
     if (!url) return "";
@@ -126,187 +61,6 @@ export default function Blogs() {
     const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.startsWith("192.168."));
     const baseUrl = isLocal ? "http://localhost:4000" : "https://protien-backend.vercel.app";
     return `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
-  };
-
-  // Form Handlers
-  const handleCreateBlog = async () => {
-    if (!blogTitle.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Blog Title is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!blogContent.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Blog Content is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const parsedTags = blogTags
-        ? blogTags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [];
-      const parsedReadTime = blogReadTime
-        ? parseInt(blogReadTime, 10)
-        : undefined;
-
-      if (blogImageMode === "upload" && blogFile) {
-        const formData = new FormData();
-        formData.append("title", blogTitle.trim());
-        formData.append("content", blogContent.trim());
-        if (blogExcerpt.trim()) formData.append("excerpt", blogExcerpt.trim());
-        formData.append("author", blogAuthor.trim());
-        if (parsedReadTime) formData.append("readTime", String(parsedReadTime));
-        formData.append("isActive", String(blogActive));
-        formData.append("image", blogFile);
-        parsedTags.forEach((tag) => formData.append("tags[]", tag));
-
-        await createBlogMutation.mutateAsync(formData);
-      } else {
-        await createBlogMutation.mutateAsync({
-          title: blogTitle.trim(),
-          content: blogContent.trim(),
-          excerpt: blogExcerpt.trim() || undefined,
-          author: blogAuthor.trim() || "Admin",
-          readTime: parsedReadTime,
-          image:
-            blogImageMode === "preset"
-              ? blogImage
-              : blogImage.trim() || undefined,
-          isActive: blogActive,
-          tags: parsedTags,
-        });
-      }
-
-      toast({
-        title: "Blog Created",
-        description: "Blog post has been successfully created.",
-      });
-
-      // Reset
-      setBlogTitle("");
-      setBlogContent("");
-      setBlogExcerpt("");
-      setBlogAuthor("Admin");
-      setBlogReadTime("");
-      setBlogTags("");
-      setBlogImage("");
-      setBlogFile(null);
-      setBlogImageMode("preset");
-      setBlogActive(true);
-      setIsAddOpen(false);
-    } catch (err: any) {
-      toast({
-        title: "Error Creating Blog",
-        description:
-          err.response?.data?.message || err.message || "Something went wrong",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const startEdit = (blog: DBBlog) => {
-    setEditBlog(blog);
-    setEditTitle(blog.title);
-    setEditContent(blog.content);
-    setEditExcerpt(blog.excerpt || "");
-    setEditAuthor(blog.author);
-    setEditReadTime(blog.readTime ? String(blog.readTime) : "");
-    setEditTags(blog.tags ? blog.tags.join(", ") : "");
-    setEditImage(blog.image || "");
-    setEditFile(null);
-    setEditImageMode(
-      blog.image && blog.image.startsWith("https://images.unsplash.com")
-        ? "preset"
-        : "url",
-    );
-    setEditActive(blog.isActive);
-  };
-
-  const handleUpdateBlog = async () => {
-    if (!editBlog) return;
-    if (!editTitle.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Blog Title is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!editContent.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Blog Content is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const parsedTags = editTags
-        ? editTags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : [];
-      const parsedReadTime = editReadTime
-        ? parseInt(editReadTime, 10)
-        : undefined;
-
-      if (editImageMode === "upload" && editFile) {
-        const formData = new FormData();
-        formData.append("title", editTitle.trim());
-        formData.append("content", editContent.trim());
-        formData.append("excerpt", editExcerpt.trim());
-        formData.append("author", editAuthor.trim());
-        if (parsedReadTime) formData.append("readTime", String(parsedReadTime));
-        formData.append("isActive", String(editActive));
-        formData.append("image", editFile);
-        parsedTags.forEach((tag) => formData.append("tags[]", tag));
-
-        await updateBlogMutation.mutateAsync({
-          id: editBlog.id,
-          data: formData,
-        });
-      } else {
-        await updateBlogMutation.mutateAsync({
-          id: editBlog.id,
-          data: {
-            title: editTitle.trim(),
-            content: editContent.trim(),
-            excerpt: editExcerpt.trim() || null,
-            author: editAuthor.trim(),
-            readTime: parsedReadTime || null,
-            image:
-              editImageMode === "preset" ? editImage : editImage.trim() || null,
-            isActive: editActive,
-            tags: parsedTags,
-          },
-        });
-      }
-
-      toast({
-        title: "Blog Updated",
-        description: "Blog post has been successfully updated.",
-      });
-
-      setEditBlog(null);
-    } catch (err: any) {
-      toast({
-        title: "Error Updating Blog",
-        description:
-          err.response?.data?.message || err.message || "Something went wrong",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleDeleteBlog = async (id: string) => {
@@ -336,7 +90,7 @@ export default function Blogs() {
             Create, edit, and publish health and fitness articles.
           </p>
         </div>
-        <Button onClick={() => setIsAddOpen(true)}>
+        <Button onClick={() => navigate("/blogs/new")}>
           <Plus className="w-4 h-4 mr-2" />
           Add Blog Post
         </Button>
@@ -394,7 +148,7 @@ export default function Blogs() {
               Write your first blog post to share educational nutrition and
               fitness insights.
             </p>
-            <Button onClick={() => setIsAddOpen(true)}>
+            <Button onClick={() => navigate("/blogs/new")}>
               <Plus className="w-4 h-4 mr-2" />
               Add Blog Post
             </Button>
@@ -458,7 +212,7 @@ export default function Blogs() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => startEdit(blog)}>
+                            <DropdownMenuItem onClick={() => navigate(`/blogs/${blog.id}/edit`)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit Post
                             </DropdownMenuItem>
@@ -528,419 +282,6 @@ export default function Blogs() {
           </Button>
         </div>
       )}
-
-      {/* Add Blog Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Blog Post</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="blog-title">Blog Title *</Label>
-              <Input
-                id="blog-title"
-                value={blogTitle}
-                onChange={(e) => setBlogTitle(e.target.value)}
-                placeholder="Enter title (e.g. Benefits of Creatine Monohydrate)"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="blog-slug">Slug (Optional)</Label>
-              <Input
-                id="blog-slug"
-                value={blogExcerpt} // Note: utilizing temporary field mappings
-                onChange={(e) => setBlogExcerpt(e.target.value)}
-                placeholder="benefits-of-creatine"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="blog-author">Author</Label>
-                <Input
-                  id="blog-author"
-                  value={blogAuthor}
-                  onChange={(e) => setBlogAuthor(e.target.value)}
-                  placeholder="Admin"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="blog-read-time">Read Time (minutes)</Label>
-                <Input
-                  id="blog-read-time"
-                  type="number"
-                  value={blogReadTime}
-                  onChange={(e) => setBlogReadTime(e.target.value)}
-                  placeholder="5"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="blog-tags">Tags (Comma-separated)</Label>
-              <Input
-                id="blog-tags"
-                value={blogTags}
-                onChange={(e) => setBlogTags(e.target.value)}
-                placeholder="fitness, health, whey"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="blog-excerpt">Excerpt / Summary (Optional)</Label>
-              <Textarea
-                id="blog-excerpt"
-                value={blogExcerpt}
-                onChange={(e) => setBlogExcerpt(e.target.value)}
-                placeholder="Brief summary of the blog post (shows on list views)..."
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="blog-content">Article Content *</Label>
-              <Textarea
-                id="blog-content"
-                value={blogContent}
-                onChange={(e) => setBlogContent(e.target.value)}
-                placeholder="Write the full blog post in rich Markdown or text..."
-                className="min-h-[150px]"
-              />
-            </div>
-
-            {/* Image Selector */}
-            <div className="space-y-3">
-              <Label>Cover Image Source</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={blogImageMode === "preset" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBlogImageMode("preset")}
-                >
-                  Presets
-                </Button>
-                <Button
-                  type="button"
-                  variant={blogImageMode === "url" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBlogImageMode("url")}
-                >
-                  Image URL
-                </Button>
-                <Button
-                  type="button"
-                  variant={blogImageMode === "upload" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setBlogImageMode("upload")}
-                >
-                  Upload File
-                </Button>
-              </div>
-
-              {blogImageMode === "preset" && (
-                <div className="grid grid-cols-4 gap-2 pt-2">
-                  {BLOG_PRESETS.map((preset, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setBlogImage(preset.url)}
-                      className={cn(
-                        "aspect-square rounded border-2 border-border overflow-hidden relative transition-all",
-                        blogImage === preset.url
-                          ? "border-primary scale-95"
-                          : "hover:border-primary/50",
-                      )}
-                    >
-                      <img
-                        src={preset.url}
-                        alt={preset.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {blogImageMode === "url" && (
-                <Input
-                  value={blogImage}
-                  onChange={(e) => setBlogImage(e.target.value)}
-                  placeholder="https://example.com/blog-cover.jpg"
-                  className="mt-1"
-                />
-              )}
-
-              {blogImageMode === "upload" && (
-                <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    id="blog-image-file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) setBlogFile(e.target.files[0]);
-                    }}
-                  />
-                  <Label
-                    htmlFor="blog-image-file"
-                    className="cursor-pointer block"
-                  >
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <span className="font-semibold text-primary">
-                      Click to upload
-                    </span>{" "}
-                    or drag and drop
-                    <span className="block text-xs text-muted-foreground mt-1">
-                      PNG, JPG up to 5MB
-                    </span>
-                  </Label>
-                  {blogFile && (
-                    <p className="mt-2 text-xs text-muted-foreground font-medium">
-                      Selected: {blogFile.name}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-border">
-              <div className="space-y-0.5">
-                <Label>Publish Status</Label>
-                <p className="text-xs text-muted-foreground">
-                  Publish immediately (Active) or save as draft (Inactive)
-                </p>
-              </div>
-              <Switch checked={blogActive} onCheckedChange={setBlogActive} />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setIsAddOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleCreateBlog}>
-                Create Article
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Blog Dialog */}
-      <Dialog
-        open={!!editBlog}
-        onOpenChange={(open) => !open && setEditBlog(null)}
-      >
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Blog Post</DialogTitle>
-          </DialogHeader>
-          {editBlog && (
-            <div className="space-y-4 pt-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-title">Blog Title *</Label>
-                <Input
-                  id="edit-title"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="Enter title"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-slug">Slug (Optional)</Label>
-                <Input
-                  id="edit-slug"
-                  value={editExcerpt} // Temporary edit hook matching create
-                  onChange={(e) => setEditExcerpt(e.target.value)}
-                  placeholder="slug-value"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-author">Author</Label>
-                  <Input
-                    id="edit-author"
-                    value={editAuthor}
-                    onChange={(e) => setEditAuthor(e.target.value)}
-                    placeholder="Admin"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-read-time">Read Time (minutes)</Label>
-                  <Input
-                    id="edit-read-time"
-                    type="number"
-                    value={editReadTime}
-                    onChange={(e) => setEditReadTime(e.target.value)}
-                    placeholder="5"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-tags">Tags (Comma-separated)</Label>
-                <Input
-                  id="edit-tags"
-                  value={editTags}
-                  onChange={(e) => setEditTags(e.target.value)}
-                  placeholder="fitness, health"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-excerpt">
-                  Excerpt / Summary (Optional)
-                </Label>
-                <Textarea
-                  id="edit-excerpt"
-                  value={editExcerpt}
-                  onChange={(e) => setEditExcerpt(e.target.value)}
-                  placeholder="Brief summary..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-content">Article Content *</Label>
-                <Textarea
-                  id="edit-content"
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  placeholder="Article body content..."
-                  className="min-h-[150px]"
-                />
-              </div>
-
-              {/* Edit Image Source */}
-              <div className="space-y-3">
-                <Label>Cover Image Source</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={editImageMode === "preset" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setEditImageMode("preset")}
-                  >
-                    Presets
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={editImageMode === "url" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setEditImageMode("url")}
-                  >
-                    Image URL
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={editImageMode === "upload" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setEditImageMode("upload")}
-                  >
-                    Upload File
-                  </Button>
-                </div>
-
-                {editImageMode === "preset" && (
-                  <div className="grid grid-cols-4 gap-2 pt-2">
-                    {BLOG_PRESETS.map((preset, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setEditImage(preset.url)}
-                        className={cn(
-                          "aspect-square rounded border-2 border-border overflow-hidden relative transition-all",
-                          editImage === preset.url
-                            ? "border-primary scale-95"
-                            : "hover:border-primary/50",
-                        )}
-                      >
-                        <img
-                          src={preset.url}
-                          alt={preset.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {editImageMode === "url" && (
-                  <Input
-                    value={editImage}
-                    onChange={(e) => setEditImage(e.target.value)}
-                    placeholder="https://example.com/blog-cover.jpg"
-                    className="mt-1"
-                  />
-                )}
-
-                {editImageMode === "upload" && (
-                  <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                    <input
-                      type="file"
-                      id="edit-blog-image-file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) setEditFile(e.target.files[0]);
-                      }}
-                    />
-                    <Label
-                      htmlFor="edit-blog-image-file"
-                      className="cursor-pointer block"
-                    >
-                      <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <span className="font-semibold text-primary">
-                        Click to upload
-                      </span>{" "}
-                      or drag and drop
-                      <span className="block text-xs text-muted-foreground mt-1">
-                        PNG, JPG up to 5MB
-                      </span>
-                    </Label>
-                    {editFile && (
-                      <p className="mt-2 text-xs text-muted-foreground font-medium">
-                        Selected: {editFile.name}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="space-y-0.5">
-                  <Label>Publish Status</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Publish immediately (Active) or save as draft (Inactive)
-                  </p>
-                </div>
-                <Switch checked={editActive} onCheckedChange={setEditActive} />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => setEditBlog(null)}
-                >
-                  Cancel
-                </Button>
-                <Button type="button" onClick={handleUpdateBlog}>
-                  Save Changes
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,21 +1,5 @@
-import { useState, Fragment } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Boxes, 
-  AlertTriangle, 
-  CheckCircle2, 
-  TrendingUp, 
-  Plus, 
-  Minus, 
-  Save, 
-  RefreshCw, 
-  Info,
-  ChevronDown,
-  ChevronUp,
-  PackageX
-} from 'lucide-react';
 import { useProductsQuery, useUpdateProductMutation } from '@/api/hooks/product.hooks';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,9 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  Boxes,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Minus,
+  PackageX,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  TrendingUp
+} from 'lucide-react';
+import { Fragment, useState } from 'react';
 
 interface StockAdjustment {
   productId: string;
@@ -41,7 +40,7 @@ export default function Inventory() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'>('ALL');
-  
+
   // Track offline changes before saving
   const [adjustments, setAdjustments] = useState<Record<string, number>>({});
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -84,17 +83,21 @@ export default function Inventory() {
 
     // Build update payload
     const updatedQty = adjustments[productId] !== undefined ? adjustments[productId] : product.quantity;
-    
+
     // Build update variant payload if variants exist
-    let updatedVariants = product.variants;
+    let updatedVariants = undefined;
     if (product.variants && product.variants.length > 0) {
       updatedVariants = product.variants.map(v => {
-        const variantQty = adjustments[`${productId}-${v.id}`] !== undefined 
-          ? adjustments[`${productId}-${v.id}`] 
+        const variantQty = adjustments[`${productId}-${v.id}`] !== undefined
+          ? adjustments[`${productId}-${v.id}`]
           : v.quantity;
         return {
-          ...v,
-          quantity: variantQty
+          sku: v.sku || undefined,
+          price: Number(v.price),
+          discountPrice: v.discountPrice ? Number(v.discountPrice) : undefined,
+          quantity: variantQty,
+          image: v.image || "",
+          attributeValues: (v.attributeValues || []).map((av: any) => typeof av === 'string' ? av : av.id)
         };
       });
     }
@@ -159,10 +162,10 @@ export default function Inventory() {
           <h1 className="text-2xl lg:text-3xl font-bold">Inventory</h1>
           <p className="text-muted-foreground">Monitor and manage product stock levels, variants, and thresholds</p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => refetch()} 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
           className="gap-2 self-start sm:self-auto"
         >
           <RefreshCw className="w-4 h-4" />
@@ -207,7 +210,7 @@ export default function Inventory() {
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-2xl font-bold">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-bold">₹{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             <p className="text-sm text-muted-foreground">Total Inventory Value</p>
           </div>
         </div>
@@ -233,8 +236,8 @@ export default function Inventory() {
                 onClick={() => setStockFilter(filter)}
                 className={cn(
                   "px-3 py-1 text-xs font-semibold rounded-md transition-all",
-                  stockFilter === filter 
-                    ? "bg-background text-foreground shadow-sm" 
+                  stockFilter === filter
+                    ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -285,7 +288,7 @@ export default function Inventory() {
                 {filteredProducts.map((product) => {
                   const hasVariants = product.variants && product.variants.length > 0;
                   const isExpanded = !!expandedRows[product.id];
-                  const hasPendingChanges = adjustments[product.id] !== undefined || 
+                  const hasPendingChanges = adjustments[product.id] !== undefined ||
                     (product.variants?.some(v => adjustments[`${product.id}-${v.id}`] !== undefined) ?? false);
 
                   // Current quantity (considering local unsaved adjustments)
@@ -316,7 +319,7 @@ export default function Inventory() {
                           {product.variants?.[0]?.sku || 'N/A'}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          ${Number(product.price).toFixed(2)}
+                          ₹{Number(product.price).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           {displayQty === 0 ? (
@@ -329,9 +332,9 @@ export default function Inventory() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8"
                               onClick={() => handleQtyChange(product.id, product.quantity, -1)}
                             >
@@ -343,9 +346,9 @@ export default function Inventory() {
                               value={displayQty}
                               onChange={(e) => handleInputChange(product.id, e.target.value)}
                             />
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
+                            <Button
+                              variant="outline"
+                              size="icon"
                               className="h-8 w-8"
                               onClick={() => handleQtyChange(product.id, product.quantity, 1)}
                             >
@@ -406,9 +409,9 @@ export default function Inventory() {
                                           </TableCell>
                                           <TableCell className="text-center">
                                             <div className="flex items-center justify-center gap-2">
-                                              <Button 
-                                                variant="outline" 
-                                                size="icon" 
+                                              <Button
+                                                variant="outline"
+                                                size="icon"
                                                 className="h-7 w-7"
                                                 onClick={() => handleQtyChange(variantKey, variant.quantity, -1)}
                                               >
@@ -420,9 +423,9 @@ export default function Inventory() {
                                                 value={displayVariantQty}
                                                 onChange={(e) => handleInputChange(variantKey, e.target.value)}
                                               />
-                                              <Button 
-                                                variant="outline" 
-                                                size="icon" 
+                                              <Button
+                                                variant="outline"
+                                                size="icon"
                                                 className="h-7 w-7"
                                                 onClick={() => handleQtyChange(variantKey, variant.quantity, 1)}
                                               >

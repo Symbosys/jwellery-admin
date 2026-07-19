@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
   Eye,
   Printer,
   Package,
@@ -86,9 +86,9 @@ export default function Orders() {
   // Filter orders based on search and status
   const filteredOrders = dbOrders.filter(order => {
     const matchesStatus = statusFilter === "all" || order.status.toLowerCase() === statusFilter.toLowerCase();
-    
+
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       order.orderNumber?.toLowerCase().includes(searchLower) ||
       order.shippingName?.toLowerCase().includes(searchLower) ||
       order.shippingPhone?.includes(searchLower) ||
@@ -124,8 +124,8 @@ export default function Orders() {
         {Object.entries(statusConfig).map(([key, config]) => {
           const count = getStatusCount(key);
           return (
-            <div 
-              key={key} 
+            <div
+              key={key}
               className={cn(
                 "bg-card border rounded-xl p-4 shadow-soft cursor-pointer transition-colors hover:bg-muted/10",
                 statusFilter === key ? "border-primary" : "border-border"
@@ -156,9 +156,9 @@ export default function Orders() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search orders by number, name, phone..." 
-              className="pl-10" 
+            <Input
+              placeholder="Search orders by number, name, phone..."
+              className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -175,8 +175,8 @@ export default function Orders() {
                 ))}
               </SelectContent>
             </Select>
-            <Button 
-              variant={statusFilter !== "all" || searchQuery !== "" ? "secondary" : "outline"} 
+            <Button
+              variant={statusFilter !== "all" || searchQuery !== "" ? "secondary" : "outline"}
               size="icon"
               onClick={() => {
                 setStatusFilter("all");
@@ -221,7 +221,7 @@ export default function Orders() {
                 filteredOrders.map((order, index) => {
                   const statusKey = order.status.toLowerCase() as keyof typeof statusConfig;
                   const status = statusConfig[statusKey] || { label: order.status, class: "badge-muted", icon: Clock };
-                  
+
                   return (
                     <motion.tr
                       key={order.id}
@@ -245,14 +245,14 @@ export default function Orders() {
                       </td>
                       <td className="px-5 py-4 hidden lg:table-cell">
                         <span className={cn(
-                          order.paymentStatus === 'PAID' ? 'badge-success' : 
-                          order.paymentStatus === 'UNPAID' ? 'badge-warning' : 'badge-muted',
+                          order.paymentStatus === 'PAID' ? 'badge-success' :
+                            order.paymentStatus === 'UNPAID' ? 'badge-warning' : 'badge-muted',
                           "capitalize"
                         )}>
                           {order.paymentStatus.toLowerCase()}
                         </span>
                       </td>
-                      <td className="px-5 py-4 font-medium">${Number(order.totalAmount).toFixed(2)}</td>
+                      <td className="px-5 py-4 font-medium">₹{Number(order.totalAmount).toFixed(2)}</td>
                       <td className="px-5 py-4">
                         <span className={cn(status.class, "capitalize")}>
                           {status.label}

@@ -37,16 +37,16 @@ interface ProductVariantManagerModalProps {
   existingVariants: any[]; // The existing variants from the product query
 }
 
-export function ProductVariantManagerModal({ 
-  open, 
-  onOpenChange, 
+export function ProductVariantManagerModal({
+  open,
+  onOpenChange,
   productId,
   existingVariants
 }: ProductVariantManagerModalProps) {
   const { toast } = useToast();
   const updateMutation = useUpdateProductMutation();
   const { data: globalAttributes } = useAttributesQuery();
-  
+
   // Local state for all variants (so we can save them all at once)
   const [variants, setVariants] = useState<any[]>([]);
 
@@ -92,7 +92,7 @@ export function ProductVariantManagerModal({
     };
 
     setVariants(prev => [...prev, variantToAdd]);
-    
+
     // Reset form
     setNewVariant({
       sku: '',
@@ -157,40 +157,40 @@ export function ProductVariantManagerModal({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div className="space-y-2">
                 <Label>SKU</Label>
-                <Input 
-                  placeholder="e.g. TSHIRT-RED-M" 
+                <Input
+                  placeholder="e.g. TSHIRT-RED-M"
                   value={newVariant.sku}
                   onChange={e => setNewVariant(prev => ({ ...prev, sku: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Price *</Label>
-                <Input 
+                <Input
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="0.00" 
+                  placeholder="0.00"
                   value={newVariant.price}
                   onChange={e => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Discount Price</Label>
-                <Input 
+                <Input
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="0.00" 
+                  placeholder="0.00"
                   value={newVariant.discountPrice}
                   onChange={e => setNewVariant(prev => ({ ...prev, discountPrice: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Quantity *</Label>
-                <Input 
+                <Input
                   type="number"
                   min="0"
-                  placeholder="0" 
+                  placeholder="0"
                   value={newVariant.quantity}
                   onChange={e => setNewVariant(prev => ({ ...prev, quantity: e.target.value }))}
                 />
@@ -206,7 +206,7 @@ export function ProductVariantManagerModal({
                   {globalAttributes.map(attr => (
                     <div key={attr.id} className="border p-3 rounded-md bg-background">
                       <Label className="text-xs text-muted-foreground mb-2 block">{attr.name}</Label>
-                      <Select 
+                      <Select
                         value={newVariant.attributeValues.find(id => attr.values?.some(v => v.id === id)) || ""}
                         onValueChange={(val) => {
                           // Remove any existing value for this attribute first
@@ -258,7 +258,7 @@ export function ProductVariantManagerModal({
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Price</p>
-                        <p className="font-medium text-sm">${Number(variant.price).toFixed(2)}</p>
+                        <p className="font-medium text-sm">₹{Number(variant.price).toFixed(2)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Stock</p>
@@ -280,7 +280,7 @@ export function ProductVariantManagerModal({
             )}
           </div>
         </div>
-        
+
         <div className="flex justify-end gap-2 pt-4 border-t mt-auto">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={updateMutation.isPending}>Save Changes</Button>

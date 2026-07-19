@@ -9,7 +9,8 @@ import {
   GripVertical,
   ChevronRight,
   Info,
-  Upload
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -129,6 +130,14 @@ export default function Categories() {
       toast({ title: 'Validation Error', description: 'Category Name is required', variant: 'destructive' });
       return;
     }
+    const isImageMissing = 
+      (catImageMode === 'upload' && !catFile) || 
+      (catImageMode !== 'upload' && !catImage.trim());
+
+    if (isImageMissing) {
+      toast({ title: 'Validation Error', description: 'Category Image is required', variant: 'destructive' });
+      return;
+    }
     try {
       if (catImageMode === 'upload' && catFile) {
         const formData = new FormData();
@@ -181,6 +190,14 @@ export default function Categories() {
     if (!editCat) return;
     if (!editCatName.trim()) {
       toast({ title: 'Validation Error', description: 'Category Name is required', variant: 'destructive' });
+      return;
+    }
+    const isImageMissing = 
+      (editCatImageMode === 'upload' && !editCatFile) || 
+      (editCatImageMode !== 'upload' && !editCatImage.trim());
+
+    if (isImageMissing) {
+      toast({ title: 'Validation Error', description: 'Category Image is required', variant: 'destructive' });
       return;
     }
     try {
@@ -581,10 +598,11 @@ export default function Categories() {
               )}
             </div>
             <div className="flex gap-3 pt-4 justify-end">
-              <Button variant="outline" onClick={() => setIsAddCatOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddCatOpen(false)} disabled={createCatMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateCategory}>
+              <Button onClick={handleCreateCategory} disabled={createCatMutation.isPending}>
+                {createCatMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Create Category
               </Button>
             </div>
@@ -787,10 +805,11 @@ export default function Categories() {
               )}
             </div>
             <div className="flex gap-3 pt-4 justify-end">
-              <Button variant="outline" onClick={() => setEditCat(null)}>
+              <Button variant="outline" onClick={() => setEditCat(null)} disabled={updateCatMutation.isPending}>
                 Cancel
               </Button>
-              <Button onClick={handleUpdateCategory}>
+              <Button onClick={handleUpdateCategory} disabled={updateCatMutation.isPending}>
+                {updateCatMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
             </div>

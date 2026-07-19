@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { 
-  DollarSign, 
-  CreditCard, 
+import {
+  DollarSign,
+  CreditCard,
   Clock,
   Download,
   TrendingUp,
@@ -14,35 +14,24 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/context/ThemeContext';
 import { cn } from '@/lib/utils';
-
-const earningsData = [
-  { month: 'Jan', earnings: 4200 },
-  { month: 'Feb', earnings: 3800 },
-  { month: 'Mar', earnings: 5100 },
-  { month: 'Apr', earnings: 4600 },
-  { month: 'May', earnings: 6200 },
-  { month: 'Jun', earnings: 7100 },
-];
-
-const transactions = [
-  { id: 1, type: 'credit', description: 'Order #ORD-7842 Payment', amount: 129.99, date: '2024-01-15', status: 'completed' },
-  { id: 2, type: 'credit', description: 'Order #ORD-7841 Payment', amount: 299.00, date: '2024-01-15', status: 'completed' },
-  { id: 3, type: 'debit', description: 'Platform Commission', amount: -42.90, date: '2024-01-14', status: 'completed' },
-  { id: 4, type: 'credit', description: 'Order #ORD-7840 Payment', amount: 79.99, date: '2024-01-14', status: 'completed' },
-  { id: 5, type: 'debit', description: 'Shipping Label Fee', amount: -8.50, date: '2024-01-13', status: 'completed' },
-  { id: 6, type: 'credit', description: 'Payout to Bank Account', amount: -2500.00, date: '2024-01-10', status: 'processing' },
-];
-
-const stats = [
-  { label: 'Total Earnings', value: '$84,254', icon: DollarSign, change: 12.5 },
-  { label: 'Pending Payout', value: '$3,420', icon: Clock, change: null },
-  { label: 'This Month', value: '$7,100', icon: TrendingUp, change: 18.2 },
-  { label: 'Completed Payouts', value: '$80,834', icon: Wallet, change: null },
-];
+import { useAdminPaymentsOverviewQuery, useAdminTransactionsQuery } from '@/api/hooks/admin.hooks';
 
 export default function Payments() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  const { data: overviewData, isLoading: isLoadingOverview } = useAdminPaymentsOverviewQuery();
+  const { data: transactionsData, isLoading: isLoadingTransactions } = useAdminTransactionsQuery({ limit: 10 });
+
+  const getIcon = (label: string) => {
+    switch (label) {
+      case 'Total Earnings': return DollarSign;
+      case 'Pending Payout': return Clock;
+      case 'This Month': return TrendingUp;
+      case 'Completed Payouts': return Wallet;
+      default: return DollarSign;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -69,33 +58,47 @@ export default function Payments() {
       </motion.div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="stat-card"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                {stat.change && (
-                  <p className="text-sm text-success flex items-center gap-1 mt-1">
-                    <TrendingUp className="w-3 h-3" />
-                    +{stat.change}%
-                  </p>
-                )}
-              </div>
-              <div className="p-3 rounded-xl bg-primary/10">
-                <stat.icon className="w-5 h-5 text-primary" />
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {isLoadingOverview ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(overviewData?.stats || []).map((stat, index) => {
+            const Icon = getIcon(stat.label);
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="stat-card"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                    {stat.change !== null && stat.change !== undefined && (
+                      <p className={cn(
+                        "text-sm flex items-center gap-1 mt-1",
+                        stat.change >= 0 ? "text-success" : "text-destructive"
+                      )}>
+                        <TrendingUp className="w-3 h-3" />
+                        {stat.change >= 0 ? '+' : ''}{stat.change}%
+                      </p>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-xl bg-primary/10">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Earnings Chart */}
       <motion.div
@@ -116,48 +119,54 @@ export default function Payments() {
         </div>
 
         <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={earningsData}>
-              <defs>
-                <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid 
-                strokeDasharray="3 3" 
-                stroke={isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'} 
-                vertical={false}
-              />
-              <XAxis 
-                dataKey="month" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
-              />
-              <YAxis 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
-                tickFormatter={(value) => `$${value / 1000}k`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: isDark ? 'hsl(222, 47%, 9%)' : 'hsl(0, 0%, 100%)',
-                  border: `1px solid ${isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'}`,
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, 'Earnings']}
-              />
-              <Area
-                type="monotone"
-                dataKey="earnings"
-                stroke="hsl(142, 76%, 36%)"
-                strokeWidth={2}
-                fill="url(#earningsGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isLoadingOverview ? (
+            <div className="w-full h-full bg-muted animate-pulse rounded-lg flex items-center justify-center">
+              <p className="text-sm text-muted-foreground animate-pulse">Generating chart...</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={overviewData?.earningsData || []}>
+                <defs>
+                  <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'}
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: isDark ? 'hsl(215, 20%, 65%)' : 'hsl(215, 16%, 47%)', fontSize: 12 }}
+                  tickFormatter={(value) => `₹${value / 1000}k`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: isDark ? 'hsl(222, 47%, 9%)' : 'hsl(0, 0%, 100%)',
+                    border: `1px solid ${isDark ? 'hsl(217, 33%, 17%)' : 'hsl(214, 32%, 91%)'}`,
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Earnings']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="earnings"
+                  stroke="hsl(142, 76%, 36%)"
+                  strokeWidth={2}
+                  fill="url(#earningsGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </motion.div>
 
@@ -190,47 +199,61 @@ export default function Payments() {
               </tr>
             </thead>
             <tbody>
-              {transactions.map((tx, index) => (
-                <motion.tr
-                  key={tx.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.05 * index }}
-                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "p-2 rounded-lg",
-                        tx.type === 'credit' ? "bg-success/10" : "bg-muted"
-                      )}>
-                        {tx.type === 'credit' ? (
-                          <ArrowDownLeft className="w-4 h-4 text-success" />
-                        ) : (
-                          <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
-                        )}
+              {isLoadingTransactions ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-muted-foreground animate-pulse font-medium">
+                    Loading transactions...
+                  </td>
+                </tr>
+              ) : !transactionsData || transactionsData.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-muted-foreground">
+                    No transactions found.
+                  </td>
+                </tr>
+              ) : (
+                transactionsData.map((tx, index) => (
+                  <motion.tr
+                    key={tx.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: 0.05 * index }}
+                    className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-2 rounded-lg",
+                          tx.type === 'credit' ? "bg-success/10" : "bg-muted"
+                        )}>
+                          {tx.type === 'credit' ? (
+                            <ArrowDownLeft className="w-4 h-4 text-success" />
+                          ) : (
+                            <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="font-medium">{tx.description}</span>
                       </div>
-                      <span className="font-medium">{tx.description}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 hidden md:table-cell text-sm text-muted-foreground">
-                    {tx.date}
-                  </td>
-                  <td className="px-5 py-4 hidden lg:table-cell">
-                    <span className={cn(
-                      tx.status === 'completed' ? 'badge-success' : 'badge-warning'
+                    </td>
+                    <td className="px-5 py-4 hidden md:table-cell text-sm text-muted-foreground">
+                      {tx.date}
+                    </td>
+                    <td className="px-5 py-4 hidden lg:table-cell">
+                      <span className={cn(
+                        tx.status === 'completed' ? 'badge-success' : 'badge-warning'
+                      )}>
+                        {tx.status}
+                      </span>
+                    </td>
+                    <td className={cn(
+                      "px-5 py-4 text-right font-medium",
+                      tx.type === 'credit' ? "text-success" : "text-foreground"
                     )}>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td className={cn(
-                    "px-5 py-4 text-right font-medium",
-                    tx.amount > 0 ? "text-success" : "text-foreground"
-                  )}>
-                    {tx.amount > 0 ? '+' : ''}{tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toFixed(2)}
-                  </td>
-                </motion.tr>
-              ))}
+                      {tx.type === 'credit' ? '+' : '-'}₹{Math.abs(tx.amount).toFixed(2)}
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

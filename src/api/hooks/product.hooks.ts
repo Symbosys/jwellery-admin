@@ -21,6 +21,7 @@ export interface DBProductVariant {
 }
 
 export interface DBProduct {
+  sku: string;
   id: string;
   name: string;
   description: string | null;
@@ -49,6 +50,16 @@ export interface DBProduct {
     name: string;
   } | null;
   variants?: DBProductVariant[];
+  weight?: string | number | null;
+  weightUnit?: string | null;
+  cost?: string | number | null;
+  lowStockThreshold?: number | null;
+  status?: string | null;
+  taxable?: boolean | null;
+  shippingRequired?: boolean | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  seoKeywords?: string | null;
 }
 
 export interface ProductsResponse {

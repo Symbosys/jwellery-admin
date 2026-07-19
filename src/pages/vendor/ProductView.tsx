@@ -270,7 +270,7 @@ export default function ProductView() {
                 <DollarSign className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">${stats.revenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold">₹{stats.revenue.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Revenue</p>
               </div>
             </div>
@@ -409,22 +409,22 @@ export default function ProductView() {
               <CardContent className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Price</span>
-                  <span className="font-semibold text-lg">${Number(product.price).toFixed(2)}</span>
+                  <span className="font-semibold text-lg">₹{Number(product.price).toFixed(2)}</span>
                 </div>
                 {product.discountPrice && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Discount Price</span>
-                    <span className="text-muted-foreground">${Number(product.discountPrice).toFixed(2)}</span>
+                    <span className="text-muted-foreground">₹{Number(product.discountPrice).toFixed(2)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cost</span>
-                  <span>${cost.toFixed(2)}</span>
+                  <span>₹{cost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Profit</span>
-                  <span className="text-success">${profit.toFixed(2)}</span>
+                  <span className="text-success">₹{profit.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Margin</span>
@@ -498,16 +498,16 @@ export default function ProductView() {
           </motion.div>
         </div>
       </div>
-      <ProductVariantManagerModal 
+      <ProductVariantManagerModal
         open={isVariantModalOpen}
         onOpenChange={setIsVariantModalOpen}
         productId={productId!}
         existingVariants={product.variants || []}
       />
 
-      <AttributeManagerModal 
-        open={isAttributeModalOpen} 
-        onOpenChange={setIsAttributeModalOpen} 
+      <AttributeManagerModal
+        open={isAttributeModalOpen}
+        onOpenChange={setIsAttributeModalOpen}
       />
     </div>
   );

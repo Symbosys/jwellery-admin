@@ -27,6 +27,7 @@ import Analytics from "@/pages/vendor/Analytics";
 import Payments from "@/pages/vendor/Payments";
 import Settings from "@/pages/vendor/Settings";
 import Blogs from "@/pages/vendor/blogs";
+import BlogForm from "@/pages/vendor/BlogForm";
 import NotFound from "@/pages/NotFound";
 import Login from "./pages/Login";
 
@@ -66,6 +67,8 @@ function App() {
                   <Route path="/payments" element={<Payments />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/blogs" element={<Blogs />} />
+                  <Route path="/blogs/new" element={<BlogForm />} />
+                  <Route path="/blogs/:blogId/edit" element={<BlogForm />} />
                 </Route>
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<NotFound />} />

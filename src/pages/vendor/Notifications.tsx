@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { 
-  Bell, 
-  Package, 
+import {
+  Bell,
+  Package,
   ShoppingCart,
   DollarSign,
   AlertTriangle,
@@ -37,7 +37,7 @@ const notifications = [
     type: 'payment',
     icon: DollarSign,
     title: 'Payment Received',
-    description: '$299.00 received for order #ORD-7841',
+    description: '₹299.00 received for order #ORD-7841',
     time: '1 hour ago',
     read: false,
   },
@@ -64,7 +64,7 @@ const notifications = [
     type: 'success',
     icon: CheckCircle,
     title: 'Payout Completed',
-    description: '$2,500.00 has been transferred to your bank account',
+    description: '₹2,500.00 has been transferred to your bank account',
     time: 'Yesterday',
     read: true,
   },
