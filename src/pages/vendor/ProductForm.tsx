@@ -50,6 +50,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/imageCompressor";
 
 const existingProducts: Record<string, any> = {
   "1": {
@@ -127,6 +128,7 @@ export default function ProductForm() {
 
   const [images, setImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (errors.image || errors.images) {
@@ -418,26 +420,41 @@ export default function ProductForm() {
                       </div>
                     </div>
                   ))}
-                  <label className="cursor-pointer aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-                    <Upload className="w-6 h-6" />
-                    <span className="text-xs">Add Image</span>
+                  <label className={cn(
+                    "cursor-pointer aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors",
+                    isUploadingImage && "opacity-50 cursor-not-allowed pointer-events-none"
+                  )}>
+                    {isUploadingImage ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Upload className="w-6 h-6" />
+                    )}
+                    <span className="text-xs">{isUploadingImage ? "Compressing..." : "Add Image"}</span>
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      disabled={isUploadingImage}
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            if (reader.result) {
-                              setImages((prev) => [
-                                ...prev,
-                                reader.result as string,
-                              ]);
-                            }
-                          };
-                          reader.readAsDataURL(file);
+                          setIsUploadingImage(true);
+                          try {
+                            const compressedUrl = await compressImage(file);
+                            setImages((prev) => [
+                              ...prev,
+                              compressedUrl,
+                            ]);
+                          } catch (err: any) {
+                            console.error("Failed to compress image:", err);
+                            toast({
+                              title: "Upload Error",
+                              description: "Failed to process the uploaded image.",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setIsUploadingImage(false);
+                          }
                         }
                         e.target.value = "";
                       }}
