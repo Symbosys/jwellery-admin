@@ -465,6 +465,45 @@ export default function ProductView() {
             </Card>
           </motion.div>
 
+          {/* Specifications */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Specifications</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Brand</span>
+                  <span>{product.brand?.name || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ideal For</span>
+                  <span>{product.idealFor || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Material</span>
+                  <span>{product.material || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pack Of</span>
+                  <span>{product.packOf || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Country Of Origin</span>
+                  <span>{product.countryOfOrigin || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Product Type</span>
+                  <span>{product.productType || 'N/A'}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           {/* Organization */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
