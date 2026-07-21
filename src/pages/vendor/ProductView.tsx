@@ -346,7 +346,7 @@ export default function ProductView() {
           </motion.div>
 
           {/* Variants */}
-          {product.variants.length > 0 && (
+          {product.variants && product.variants.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
