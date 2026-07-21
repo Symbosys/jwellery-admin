@@ -124,6 +124,11 @@ export default function ProductForm() {
     seoTitle: "",
     seoDescription: "",
     seoKeywords: "",
+    countryOfOrigin: "India",
+    idealFor: "",
+    material: "",
+    packOf: "1",
+    productType: "",
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -163,6 +168,11 @@ export default function ProductForm() {
         seoTitle: product.seoTitle || "",
         seoDescription: product.seoDescription || "",
         seoKeywords: product.seoKeywords || "",
+        countryOfOrigin: product.countryOfOrigin || "India",
+        idealFor: product.idealFor || "",
+        material: product.material || "",
+        packOf: String(product.packOf ?? "1"),
+        productType: product.productType || "",
       });
       setImages(
         Array.isArray(product.images)
@@ -228,6 +238,11 @@ export default function ProductForm() {
       categoryId: formData.category || undefined,
       subCategoryId: formData.subcategory || undefined,
       brandId: formData.brandId || undefined,
+      countryOfOrigin: formData.countryOfOrigin.trim() || "India",
+      idealFor: formData.idealFor.trim() || undefined,
+      material: formData.material.trim() || undefined,
+      packOf: parseIntNumber(formData.packOf) ?? 1,
+      productType: formData.productType.trim() || undefined,
     };
 
     setErrors({});
@@ -372,6 +387,88 @@ export default function ProductForm() {
                   {errors.description && (
                     <p className="text-sm font-medium text-destructive mt-1">{errors.description}</p>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Product Specifications */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Specifications</CardTitle>
+                <CardDescription>
+                  Add detailed specifications for this product
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="countryOfOrigin">Country Of Origin</Label>
+                    <Input
+                      id="countryOfOrigin"
+                      value={formData.countryOfOrigin}
+                      onChange={(e) => handleInputChange("countryOfOrigin", e.target.value)}
+                      placeholder="e.g. India"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="idealFor">Ideal For</Label>
+                    <Select
+                      value={formData.idealFor}
+                      onValueChange={(value) => handleInputChange("idealFor", value)}
+                    >
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Select who this is for" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Women">Women</SelectItem>
+                        <SelectItem value="Men">Men</SelectItem>
+                        <SelectItem value="Unisex">Unisex</SelectItem>
+                        <SelectItem value="Kids">Kids</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="material">Material</Label>
+                    <Input
+                      id="material"
+                      value={formData.material}
+                      onChange={(e) => handleInputChange("material", e.target.value)}
+                      placeholder="e.g. Gold Tone Metal"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="packOf">Pack Of</Label>
+                    <Input
+                      id="packOf"
+                      type="number"
+                      min="1"
+                      value={formData.packOf}
+                      onChange={(e) => handleInputChange("packOf", e.target.value)}
+                      placeholder="1"
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="productType">Product Type</Label>
+                    <Input
+                      id="productType"
+                      value={formData.productType}
+                      onChange={(e) => handleInputChange("productType", e.target.value)}
+                      placeholder="e.g. Drop Earrings"
+                      className="mt-1.5"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -60,6 +60,11 @@ export interface DBProduct {
   seoTitle?: string | null;
   seoDescription?: string | null;
   seoKeywords?: string | null;
+  countryOfOrigin?: string | null;
+  idealFor?: string | null;
+  material?: string | null;
+  packOf?: number | null;
+  productType?: string | null;
 }
 
 export interface ProductsResponse {
