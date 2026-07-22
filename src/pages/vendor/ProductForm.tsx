@@ -96,7 +96,7 @@ export default function ProductForm() {
     productId || "",
     isEditing,
   );
-  const { data: categoriesData } = useCategoriesQuery();
+  const { data: categoriesData } = useCategoriesQuery({ limit: 1000 });
   const { data: attributes } = useAttributesQuery();
   const { data: brandsData } = useBrandsQuery({ limit: 1000 });
 

@@ -65,7 +65,7 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
 
-  const { data: categoriesData } = useCategoriesQuery();
+  const { data: categoriesData } = useCategoriesQuery({ limit: 1000 });
   const { data: productsData, isLoading } = useProductsQuery({
     search: searchQuery || undefined,
     categoryId: selectedCategory !== 'all' ? selectedCategory : undefined,
