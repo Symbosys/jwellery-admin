@@ -174,13 +174,21 @@ export default function ProductForm() {
         packOf: String(product.packOf ?? "1"),
         productType: product.productType || "",
       });
-      setImages(
-        Array.isArray(product.images)
-          ? product.images
-          : typeof product.images === "string"
-            ? JSON.parse(product.images)
-            : [],
-      );
+      const initialImages: string[] = [];
+      if (product.image) {
+        initialImages.push(product.image);
+      }
+      const otherImages = Array.isArray(product.images)
+        ? product.images
+        : typeof product.images === "string"
+          ? JSON.parse(product.images)
+          : [];
+      otherImages.forEach((img: string) => {
+        if (img && !initialImages.includes(img)) {
+          initialImages.push(img);
+        }
+      });
+      setImages(initialImages);
     }
   }, [product]);
 
