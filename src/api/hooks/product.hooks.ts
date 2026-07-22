@@ -9,10 +9,12 @@ export interface DBProductVariant {
   discountPrice: string | number | null;
   quantity: number;
   image: string | null;
+  resolvedImage?: string | null;
   attributeValues: {
     id: string;
     attributeId: string;
     value: string;
+    image?: string | null;
     attribute: {
       id: string;
       name: string;

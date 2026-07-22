@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Trash2, Edit } from 'lucide-react';
+import { Package, Plus, Trash2, Edit, Upload, X, Image as ImageIcon, Loader2, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAttributesQuery } from '@/api/hooks/attribute.hooks';
 import { useUpdateProductMutation } from '@/api/hooks/product.hooks';
+import { AttributeManagerModal } from '@/components/vendor/AttributeManagerModal';
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { compressImage } from '@/lib/imageCompressor';
 
 interface VariantInput {
   sku: string;
@@ -49,6 +51,8 @@ export function ProductVariantManagerModal({
 
   // Local state for all variants (so we can save them all at once)
   const [variants, setVariants] = useState<any[]>([]);
+  const [isUploadingVariantImage, setIsUploadingVariantImage] = useState(false);
+  const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -108,13 +112,25 @@ export function ProductVariantManagerModal({
     setVariants(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleAttributeValue = (valueId: string) => {
-    setNewVariant(prev => {
-      const current = prev.attributeValues;
-      if (current.includes(valueId)) {
-        return { ...prev, attributeValues: current.filter(id => id !== valueId) };
-      }
-      return { ...prev, attributeValues: [...current, valueId] };
+  const handleVariantListImageUpload = async (index: number, file: File) => {
+    try {
+      const base64 = await compressImage(file);
+      setVariants(prev => {
+        const next = [...prev];
+        next[index] = { ...next[index], image: base64 };
+        return next;
+      });
+      toast({ title: 'Image attached', description: 'Variant image set. Click Save Changes to apply.' });
+    } catch (err: any) {
+      toast({ title: 'Upload Error', description: 'Failed to process image.', variant: 'destructive' });
+    }
+  };
+
+  const handleRemoveVariantListImage = (index: number) => {
+    setVariants(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], image: '' };
+      return next;
     });
   };
 
@@ -140,6 +156,18 @@ export function ProductVariantManagerModal({
     }
   };
 
+  // Helper to find image from selected attribute values if variant image is missing
+  const getResolvedAttributeImage = (valIds: string[]): string | null => {
+    if (!globalAttributes || !valIds || valIds.length === 0) return null;
+    for (const attr of globalAttributes) {
+      if (attr.values) {
+        const matchedVal = attr.values.find(v => valIds.includes(v.id) && v.image);
+        if (matchedVal?.image) return matchedVal.image;
+      }
+    }
+    return null;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -154,7 +182,7 @@ export function ProductVariantManagerModal({
           {/* Add New Variant Section */}
           <Card className="p-4 bg-muted/20">
             <h3 className="text-sm font-semibold mb-4">Add New Variant</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
               <div className="space-y-2">
                 <Label>SKU</Label>
                 <Input
@@ -195,12 +223,77 @@ export function ProductVariantManagerModal({
                   onChange={e => setNewVariant(prev => ({ ...prev, quantity: e.target.value }))}
                 />
               </div>
+              <div className="space-y-2 col-span-2 sm:col-span-1">
+                <Label>Variant Image</Label>
+                {newVariant.image ? (
+                  <div className="relative group w-full h-10 rounded border overflow-hidden bg-muted flex items-center justify-center">
+                    <img src={newVariant.image} alt="Variant" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setNewVariant(prev => ({ ...prev, image: '' }))}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-full h-10 rounded border border-dashed hover:border-primary flex items-center justify-center cursor-pointer text-muted-foreground hover:text-primary transition-colors text-xs gap-1.5 bg-background">
+                    {isUploadingVariantImage ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={isUploadingVariantImage}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setIsUploadingVariantImage(true);
+                          try {
+                            const compressed = await compressImage(file);
+                            setNewVariant(prev => ({ ...prev, image: compressed }));
+                          } catch (err: any) {
+                            toast({ title: 'Upload Error', description: 'Failed to compress image.', variant: 'destructive' });
+                          } finally {
+                            setIsUploadingVariantImage(false);
+                          }
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3 mb-4">
-              <Label>Select Attributes for this Variant</Label>
+              <div className="flex items-center justify-between">
+                <Label>Select Attributes for this Variant</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  type="button" 
+                  className="h-7 text-xs gap-1.5 font-medium border-primary/30 text-primary hover:bg-primary/10"
+                  onClick={() => setIsAttributeModalOpen(true)}
+                >
+                  <Tag className="w-3.5 h-3.5 text-primary" />
+                  <span>Manage Attributes & Images</span>
+                </Button>
+              </div>
               {(!globalAttributes || globalAttributes.length === 0) ? (
-                <p className="text-sm text-muted-foreground italic">No global attributes found. You can create them in the Global Attributes manager.</p>
+                <div className="p-3 border border-dashed rounded-md bg-background text-center">
+                  <p className="text-sm text-muted-foreground italic mb-2">No global attributes found.</p>
+                  <Button variant="secondary" size="sm" onClick={() => setIsAttributeModalOpen(true)}>
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Create Attribute (Color, Size, etc.)
+                  </Button>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {globalAttributes.map(attr => (
@@ -224,7 +317,12 @@ export function ProductVariantManagerModal({
                         <SelectContent>
                           <SelectItem value="none">None</SelectItem>
                           {attr.values?.map(val => (
-                            <SelectItem key={val.id} value={val.id}>{val.value}</SelectItem>
+                            <SelectItem key={val.id} value={val.id}>
+                              <div className="flex items-center gap-2">
+                                {val.image && <img src={val.image} alt={val.value} className="w-4 h-4 rounded object-cover" />}
+                                <span>{val.value}</span>
+                              </div>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -249,33 +347,83 @@ export function ProductVariantManagerModal({
               </div>
             ) : (
               <div className="space-y-3">
-                {variants.map((variant, index) => (
-                  <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 border rounded-lg bg-card gap-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
-                      <div>
-                        <p className="text-xs text-muted-foreground">SKU</p>
-                        <p className="font-medium text-sm">{variant.sku || 'N/A'}</p>
+                {variants.map((variant, index) => {
+                  const resolvedAttrImg = getResolvedAttributeImage(variant.attributeValues || []);
+                  const displayImg = variant.image || resolvedAttrImg;
+                  const isAttrFallback = !variant.image && !!resolvedAttrImg;
+
+                  return (
+                    <div key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 border rounded-lg bg-card gap-4">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Variant Image */}
+                        <div className="relative group w-12 h-12 rounded border overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+                          {displayImg ? (
+                            <>
+                              <img src={displayImg} alt="Variant" className="w-full h-full object-cover" />
+                              {isAttrFallback && (
+                                <span className="absolute bottom-0 right-0 bg-primary/90 text-[9px] text-primary-foreground px-1 py-0.2 rounded-tl" title="Using attribute value image">
+                                  Attr
+                                </span>
+                              )}
+                              <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity">
+                                <Upload className="w-4 h-4" />
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleVariantListImageUpload(index, file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            </>
+                          ) : (
+                            <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-muted-foreground hover:text-primary transition-colors">
+                              <ImageIcon className="w-4 h-4" />
+                              <span className="text-[9px]">Add</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleVariantListImageUpload(index, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
+                          <div>
+                            <p className="text-xs text-muted-foreground">SKU</p>
+                            <p className="font-medium text-sm">{variant.sku || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Price</p>
+                            <p className="font-medium text-sm">₹{Number(variant.price).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Stock</p>
+                            <p className="font-medium text-sm">{variant.quantity}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Attributes</p>
+                            <p className="font-medium text-sm">
+                              {variant.attributeValues.length > 0 ? `${variant.attributeValues.length} selected` : 'None'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Price</p>
-                        <p className="font-medium text-sm">₹{Number(variant.price).toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Stock</p>
-                        <p className="font-medium text-sm">{variant.quantity}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Attributes</p>
-                        <p className="font-medium text-sm">
-                          {variant.attributeValues.length > 0 ? `${variant.attributeValues.length} selected` : 'None'}
-                        </p>
-                      </div>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRemoveVariant(index)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleRemoveVariant(index)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -285,7 +433,13 @@ export function ProductVariantManagerModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={updateMutation.isPending}>Save Changes</Button>
         </div>
+
+        <AttributeManagerModal 
+          open={isAttributeModalOpen} 
+          onOpenChange={setIsAttributeModalOpen} 
+        />
       </DialogContent>
     </Dialog>
   );
 }
+

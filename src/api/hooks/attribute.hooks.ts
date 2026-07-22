@@ -5,6 +5,7 @@ export interface DBAttributeValue {
   id: string;
   attributeId: string;
   value: string;
+  image?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,7 +38,7 @@ export const useAttributesQuery = () => {
 export const useCreateAttributeMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; values?: string[] }) => {
+    mutationFn: async (data: { name: string; values?: Array<string | { value: string; image?: string | null }> }) => {
       const response = await apiClient.post<{ success: boolean; data: DBAttribute }>("/attribute", data);
       return response.data.data;
     },
@@ -50,8 +51,21 @@ export const useCreateAttributeMutation = () => {
 export const useAddAttributeValuesMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, values }: { id: string; values: string[] }) => {
+    mutationFn: async ({ id, values }: { id: string; values: Array<string | { value: string; image?: string | null }> }) => {
       const response = await apiClient.post<{ success: boolean; data: DBAttributeValue[] }>(`/attribute/${id}/values`, { values });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: attributeKeys.list() });
+    },
+  });
+};
+
+export const useUpdateAttributeValueMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ valueId, value, image }: { valueId: string; value?: string; image?: string | null }) => {
+      const response = await apiClient.patch<{ success: boolean; data: DBAttributeValue }>(`/attribute/values/${valueId}`, { value, image });
       return response.data.data;
     },
     onSuccess: () => {
@@ -85,3 +99,4 @@ export const useDeleteAttributeValueMutation = () => {
     },
   });
 };
+
