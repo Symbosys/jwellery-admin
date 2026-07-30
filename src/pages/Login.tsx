@@ -146,15 +146,29 @@ export default function Login() {
         className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 shadow-2xl relative z-10"
       >
         {/* Brand Header */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-gradient-to-tr from-primary to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 mb-3">
-            <Store className="w-6 h-6 text-white" />
+        <div className="flex flex-col items-center mb-6 text-center">
+          <div className="relative mb-3">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-4 ring-[#8A1B28]/40 shadow-2xl bg-[#0D261B] p-0.5 flex items-center justify-center transition-transform hover:scale-105">
+              <img
+                src="/logo.jpeg"
+                alt="Sakhio Fine Jewellery Logo"
+                className="w-full h-full object-cover rounded-full"
+              />
+            </div>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-            Vendor Hub Pro
-          </h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Connect your store and start selling
+          <div className="flex items-center gap-2 mb-1">
+            <h2 className="text-2xl font-extrabold tracking-wider text-white">
+              SAKHIO
+            </h2>
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-[#8A1B28] text-[#E5D5B5] border border-[#E5D5B5]/30">
+              Admin
+            </span>
+          </div>
+          <span className="text-xs font-bold text-[#E5D5B5] uppercase tracking-[0.25em]">
+            Fine Jewellery
+          </span>
+          <p className="text-xs text-slate-400 mt-2">
+            Store & Inventory Management Portal
           </p>
         </div>
 

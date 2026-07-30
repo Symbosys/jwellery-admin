@@ -126,27 +126,45 @@ export function Sidebar() {
           isCollapsed ? "w-[72px]" : "w-64",
         )}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <Store className="w-5 h-5 text-primary-foreground" />
+        {/* Logo Header */}
+        <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border bg-sidebar/50">
+          <div className="flex items-center gap-3 overflow-hidden min-w-0">
+            {/* Circular Luxury Logo Emblem */}
+            <div className="relative flex-shrink-0">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-1 ring-[#8A1B28]/30 bg-[#0F291E] shadow-sm flex items-center justify-center">
+                <img
+                  src="/logo.jpeg"
+                  alt="Sakhio Logo"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
+
             {!isCollapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="font-semibold text-sidebar-foreground text-lg"
+              <motion.div
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex flex-col justify-center min-w-0"
               >
-                VendorHub
-              </motion.span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-sidebar-foreground text-base tracking-wider leading-none font-display">
+                    SAKHIO
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-[#8A1B28]/10 text-[#8A1B28] dark:bg-[#8A1B28]/30 dark:text-[#E5D5B5] border border-[#8A1B28]/20">
+                    Admin
+                  </span>
+                </div>
+                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-1 truncate">
+                  Fine Jewellery
+                </span>
+              </motion.div>
             )}
           </div>
 
           {/* Mobile Close */}
           <button
             onClick={closeMobile}
-            className="lg:hidden p-2 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent"
+            className="lg:hidden p-1.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
