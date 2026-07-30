@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { compressImage } from '@/lib/imageCompressor';
+import { cn } from '@/lib/utils';
 
 interface VariantInput {
   sku: string;
@@ -295,37 +296,44 @@ export function ProductVariantManagerModal({
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {globalAttributes.map(attr => (
                     <div key={attr.id} className="border p-3 rounded-md bg-background">
-                      <Label className="text-xs text-muted-foreground mb-2 block">{attr.name}</Label>
-                      <Select
-                        value={newVariant.attributeValues.find(id => attr.values?.some(v => v.id === id)) || ""}
-                        onValueChange={(val) => {
-                          // Remove any existing value for this attribute first
-                          const otherAttrValues = newVariant.attributeValues.filter(id => !attr.values?.some(v => v.id === id));
-                          if (val !== "none") {
-                            setNewVariant(prev => ({ ...prev, attributeValues: [...otherAttrValues, val] }));
-                          } else {
-                            setNewVariant(prev => ({ ...prev, attributeValues: otherAttrValues }));
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder={`Select ${attr.name}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {attr.values?.map(val => (
-                            <SelectItem key={val.id} value={val.id}>
-                              <div className="flex items-center gap-2">
-                                {val.image && <img src={val.image} alt={val.value} className="w-4 h-4 rounded object-cover" />}
-                                <span>{val.value}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs font-semibold text-foreground">{attr.name}</Label>
+                        <span className="text-[10px] text-muted-foreground">Select values for this variant</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {attr.values?.map(val => {
+                          const isSelected = newVariant.attributeValues.includes(val.id);
+                          return (
+                            <button
+                              key={val.id}
+                              type="button"
+                              onClick={() => {
+                                setNewVariant(prev => {
+                                  const exists = prev.attributeValues.includes(val.id);
+                                  const nextVals = exists
+                                    ? prev.attributeValues.filter(id => id !== val.id)
+                                    : [...prev.attributeValues, val.id];
+                                  return { ...prev, attributeValues: nextVals };
+                                });
+                              }}
+                              className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-all",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                  : "bg-background hover:bg-muted text-foreground border-input"
+                              )}
+                            >
+                              {val.image && (
+                                <img src={val.image} alt={val.value} className="w-3.5 h-3.5 rounded object-cover" />
+                              )}
+                              <span>{val.value}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -411,10 +419,34 @@ export function ProductVariantManagerModal({
                             <p className="font-medium text-sm">{variant.quantity}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Attributes</p>
-                            <p className="font-medium text-sm">
-                              {variant.attributeValues.length > 0 ? `${variant.attributeValues.length} selected` : 'None'}
-                            </p>
+                            <p className="text-xs text-muted-foreground mb-1">Attributes</p>
+                            {(() => {
+                              const valIds = variant.attributeValues || [];
+                              const labels: string[] = [];
+                              if (globalAttributes) {
+                                valIds.forEach((id: string) => {
+                                  for (const attr of globalAttributes) {
+                                    const matched = attr.values?.find((v: any) => v.id === id);
+                                    if (matched) {
+                                      labels.push(`${attr.name}: ${matched.value}`);
+                                      break;
+                                    }
+                                  }
+                                });
+                              }
+                              if (labels.length === 0) {
+                                return <span className="text-xs text-muted-foreground">{valIds.length} selected</span>;
+                              }
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {labels.map((lbl, idx) => (
+                                    <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                                      {lbl}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
