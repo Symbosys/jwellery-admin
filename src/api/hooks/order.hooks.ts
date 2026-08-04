@@ -121,3 +121,82 @@ export const useUpdateOrderPaymentStatusMutation = () => {
     },
   });
 };
+
+export interface UpdateOrderAddressInput {
+  orderId: string;
+  shippingName: string;
+  shippingPhone: string;
+  shippingAddress: string;
+  shippingAddress2?: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingCountry?: string;
+  shippingPincode: string;
+}
+
+export const useUpdateOrderAddressMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<DBOrder, Error, UpdateOrderAddressInput>({
+    mutationFn: async (data) => {
+      const { orderId, ...addressData } = data;
+      const response = await apiClient.put<{ success: boolean; data: { order: DBOrder } | DBOrder }>(
+        `/order/${orderId}/address`,
+        addressData
+      );
+      const resData = response.data.data;
+      return "order" in resData ? (resData as { order: DBOrder }).order : (resData as DBOrder);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: orderKeys.detail(data.id) });
+      }
+    },
+  });
+};
+
+export interface ReturnOrderInput {
+  orderId: string;
+  reason?: string;
+}
+
+export const useReturnOrderMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<DBOrder, Error, ReturnOrderInput>({
+    mutationFn: async ({ orderId, reason }) => {
+      const response = await apiClient.put<{ success: boolean; data: { order: DBOrder } | DBOrder }>(
+        `/order/${orderId}/return`,
+        { reason }
+      );
+      const resData = response.data.data;
+      return "order" in resData ? (resData as { order: DBOrder }).order : (resData as DBOrder);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: orderKeys.detail(data.id) });
+      }
+    },
+  });
+};
+
+export const useCancelOrderMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation<DBOrder, Error, string>({
+    mutationFn: async (id: string) => {
+      const response = await apiClient.put<{ success: boolean; data: DBOrder }>(`/order/${id}/cancel`);
+      return response.data.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: orderKeys.detail(data.id) });
+      }
+    },
+  });
+};
+
+
+

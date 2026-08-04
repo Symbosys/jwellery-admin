@@ -31,7 +31,16 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { useOrdersQuery, DBOrder } from '@/api/hooks/order.hooks';
+import { useOrdersQuery, useCancelOrderMutation, DBOrder } from '@/api/hooks/order.hooks';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+
 
 const statusConfig = {
   pending: { icon: Clock, label: 'Pending', class: 'badge-warning' },
@@ -50,10 +59,42 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: dbOrders = [] as DBOrder[], isLoading, error } = useOrdersQuery();
+  const cancelOrderMutation = useCancelOrderMutation();
+
+  const [selectedOrderToCancel, setSelectedOrderToCancel] = useState<DBOrder | null>(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+
+  const handleOpenCancelDialog = (order: DBOrder, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrderToCancel(order);
+    setIsCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancelOrder = () => {
+    if (!selectedOrderToCancel) return;
+    cancelOrderMutation.mutate(selectedOrderToCancel.id, {
+      onSuccess: () => {
+        setIsCancelDialogOpen(false);
+        setSelectedOrderToCancel(null);
+        toast({
+          title: 'Order Cancelled',
+          description: `Order #${selectedOrderToCancel.orderNumber} has been manually cancelled and synced to Shiprocket`,
+        });
+      },
+      onError: (err: any) => {
+        toast({
+          variant: 'destructive',
+          title: 'Cancellation Failed',
+          description: err.message || 'Failed to cancel order',
+        });
+      },
+    });
+  };
 
   const handleViewOrder = (orderId: string) => {
     navigate(`/orders/${orderId}`);
   };
+
 
   const handlePrintLabel = (orderId: string) => {
     toast({ title: 'Printing Label', description: `Shipping label for ${orderId} is being prepared` });
@@ -276,6 +317,14 @@ export default function Orders() {
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewOrder(order.id); }}>
                               Update Status
                             </DropdownMenuItem>
+                            {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={(e) => handleOpenCancelDialog(order, e)}
+                              >
+                                <XCircle className="mr-2 h-4 w-4" /> Cancel Order
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -286,6 +335,31 @@ export default function Orders() {
             </tbody>
           </table>
         </div>
+
+        {/* Cancellation Confirmation Dialog */}
+        <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Manually Cancel Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel Order <strong>#{selectedOrderToCancel?.orderNumber}</strong>?
+                This will restore inventory stock and cancel the order in Shiprocket.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCancelDialogOpen(false)}>
+                Keep Order
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmCancelOrder}
+                disabled={cancelOrderMutation.isPending}
+              >
+                {cancelOrderMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-5 py-4 border-t border-border">

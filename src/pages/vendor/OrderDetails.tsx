@@ -50,8 +50,12 @@ import { cn } from '@/lib/utils';
 import {
   useOrderDetailQuery,
   useUpdateOrderStatusMutation,
-  useUpdateOrderPaymentStatusMutation
+  useUpdateOrderPaymentStatusMutation,
+  useUpdateOrderAddressMutation,
+  useReturnOrderMutation
 } from '@/api/hooks/order.hooks';
+
+
 
 const statusConfig = {
   pending: { icon: Clock, label: 'Pending', class: 'badge-warning', color: 'bg-warning/10 text-warning border-warning/20' },
@@ -89,6 +93,8 @@ export default function OrderDetails() {
 
   const updateStatusMutation = useUpdateOrderStatusMutation();
   const updatePaymentStatusMutation = useUpdateOrderPaymentStatusMutation();
+  const updateAddressMutation = useUpdateOrderAddressMutation();
+  const returnOrderMutation = useReturnOrderMutation();
 
   const [status, setStatus] = useState<string>('PENDING');
   const [paymentStatus, setPaymentStatus] = useState<string>('UNPAID');
@@ -96,6 +102,84 @@ export default function OrderDetails() {
   const [refundReason, setRefundReason] = useState('');
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [adminReturnReason, setAdminReturnReason] = useState('');
+
+  const handleReturnOrder = () => {
+    if (!order) return;
+    returnOrderMutation.mutate(
+      { orderId: order.id, reason: adminReturnReason },
+      {
+        onSuccess: () => {
+          setIsReturnDialogOpen(false);
+          toast({
+            title: "Return Pickup Created",
+            description: "Shiprocket return order and pickup created successfully",
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Return Failed",
+            description: err.message || "Failed to create return order",
+          });
+        },
+      }
+    );
+  };
+
+
+  const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editPincode, setEditPincode] = useState('');
+
+  const handleOpenEditAddress = () => {
+    if (order) {
+      setEditName(order.shippingName || '');
+      setEditPhone(order.shippingPhone || '');
+      setEditAddress(order.shippingAddress || '');
+      setEditCity(order.shippingCity || '');
+      setEditState(order.shippingState || '');
+      setEditPincode(order.shippingPincode || '');
+      setIsEditAddressOpen(true);
+    }
+  };
+
+  const handleSaveAddress = () => {
+    if (!order) return;
+    updateAddressMutation.mutate(
+      {
+        orderId: order.id,
+        shippingName: editName,
+        shippingPhone: editPhone,
+        shippingAddress: editAddress,
+        shippingCity: editCity,
+        shippingState: editState,
+        shippingPincode: editPincode,
+      },
+      {
+        onSuccess: () => {
+          setIsEditAddressOpen(false);
+          toast({
+            title: "Address Updated",
+            description: "Shipping address updated & synced with Shiprocket successfully",
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: err.message || "Failed to update shipping address",
+          });
+        },
+      }
+    );
+  };
+
 
   useEffect(() => {
     if (order) {
@@ -251,6 +335,39 @@ export default function OrderDetails() {
             <MessageSquare className="w-4 h-4 mr-2" />
             Contact Customer
           </Button>
+          {status === 'DELIVERED' && (
+            <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-amber-700 hover:text-amber-800 border-amber-300">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Return Order (Shiprocket)
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Initiate Shiprocket Return Order</DialogTitle>
+                  <DialogDescription>
+                    This will create a return pickup request in Shiprocket and update order status to RETURNED.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <label className="text-sm font-medium">Reason for Return</label>
+                  <Textarea
+                    placeholder="Enter reason for customer return..."
+                    value={adminReturnReason}
+                    onChange={(e) => setAdminReturnReason(e.target.value)}
+                    className="mt-2"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsReturnDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleReturnOrder} disabled={returnOrderMutation.isPending}>
+                    {returnOrderMutation.isPending ? 'Processing...' : 'Create Return Pickup'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
           {paymentStatus !== 'REFUNDED' && (
             <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
               <DialogTrigger asChild>
@@ -259,6 +376,7 @@ export default function OrderDetails() {
                   Refund
                 </Button>
               </DialogTrigger>
+
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Process Refund</DialogTitle>
@@ -522,12 +640,97 @@ export default function OrderDetails() {
             transition={{ delay: 0.25 }}
           >
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-primary" />
                   Shipping Address
                 </CardTitle>
+                {['PENDING', 'CONFIRMED', 'PROCESSING'].includes(order.status) && (
+                  <Dialog open={isEditAddressOpen} onOpenChange={setIsEditAddressOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={handleOpenEditAddress}>
+                        <Edit className="w-3.5 h-3.5 mr-1" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Edit Delivery Address</DialogTitle>
+                        <DialogDescription>
+                          Update customer shipping address and sync changes directly to Shiprocket.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-3 py-2 text-sm">
+                        <div>
+                          <label className="font-medium text-xs">Customer Name</label>
+                          <input
+                            type="text"
+                            className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="font-medium text-xs">Phone Number</label>
+                          <input
+                            type="text"
+                            className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="font-medium text-xs">Address</label>
+                          <textarea
+                            rows={2}
+                            className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={editAddress}
+                            onChange={(e) => setEditAddress(e.target.value)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="font-medium text-xs">City</label>
+                            <input
+                              type="text"
+                              className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                              value={editCity}
+                              onChange={(e) => setEditCity(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-medium text-xs">State</label>
+                            <input
+                              type="text"
+                              className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                              value={editState}
+                              onChange={(e) => setEditState(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="font-medium text-xs">Pincode</label>
+                          <input
+                            type="text"
+                            className="w-full mt-1 p-2 border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            value={editPincode}
+                            onChange={(e) => setEditPincode(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditAddressOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleSaveAddress} disabled={updateAddressMutation.isPending}>
+                          {updateAddressMutation.isPending ? 'Saving...' : 'Save & Sync'}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </CardHeader>
+
               <CardContent className="space-y-4">
                 <div className="text-sm space-y-1">
                   <div className="flex items-center gap-2">
