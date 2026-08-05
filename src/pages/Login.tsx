@@ -148,7 +148,7 @@ export default function Login() {
         {/* Brand Header */}
         <div className="flex flex-col items-center mb-6 text-center">
           <div className="relative mb-3">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-4 ring-[#8A1B28]/40 shadow-2xl bg-[#0D261B] p-0.5 flex items-center justify-center transition-transform hover:scale-105">
+            <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-4 ring-[#8A1B28]/40 shadow-2xl bg-[#0D261B] p-0.5 flex items-center justify-center transition-transform hover:scale-105">
               <img
                 src="/logo.jpeg"
                 alt="Sakhio Fine Jewellery Logo"

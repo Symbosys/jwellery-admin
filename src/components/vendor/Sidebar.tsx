@@ -131,7 +131,7 @@ export function Sidebar() {
           <div className="flex items-center gap-3 overflow-hidden min-w-0">
             {/* Circular Luxury Logo Emblem */}
             <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-1 ring-[#8A1B28]/30 bg-[#0F291E] shadow-sm flex items-center justify-center">
+              <div className="w-[52px] h-[52px] rounded-full overflow-hidden border-2 border-[#E5D5B5] ring-1 ring-[#8A1B28]/30 bg-[#0F291E] shadow-sm flex items-center justify-center">
                 <img
                   src="/logo.jpeg"
                   alt="Sakhio Logo"
