@@ -134,6 +134,9 @@ export default function ProductForm() {
   const [images, setImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDraggingOverWindow, setIsDraggingOverWindow] = useState(false);
+  const [isDraggingOverMedia, setIsDraggingOverMedia] = useState(false);
+  const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (errors.image || errors.images) {
@@ -205,6 +208,164 @@ export default function ProductForm() {
       errorKeysToClear.forEach((k) => delete next[k]);
       return next;
     });
+  };
+
+  const processImageFiles = async (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    if (imageFiles.length === 0) return;
+
+    setIsUploadingImage(true);
+    try {
+      const compressedImages = await Promise.all(
+        imageFiles.map(async (file) => {
+          try {
+            return await compressImage(file);
+          } catch (err) {
+            console.error("Failed to compress image:", file.name, err);
+            return null;
+          }
+        })
+      );
+
+      const validImages = compressedImages.filter((img): img is string => !!img);
+
+      if (validImages.length > 0) {
+        setImages((prev) => [...prev, ...validImages]);
+        toast({
+          title: "Images Added",
+          description: `Successfully added ${validImages.length} image${validImages.length > 1 ? "s" : ""}.`,
+        });
+      }
+
+      if (validImages.length < imageFiles.length) {
+        toast({
+          title: "Some images failed",
+          description: "Some image files could not be processed.",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to process images:", err);
+      toast({
+        title: "Upload Error",
+        description: "Failed to process the uploaded image(s).",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Window-level drag and drop listener to allow dropping images from anywhere
+  useEffect(() => {
+    let dragCounter = 0;
+
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+        dragCounter++;
+        setIsDraggingOverWindow(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          setIsDraggingOverWindow(false);
+        }
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.types.includes("Files")) {
+        e.dataTransfer.dropEffect = "copy";
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter = 0;
+      setIsDraggingOverWindow(false);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processImageFiles(e.dataTransfer.files);
+      }
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("drop", handleDrop);
+
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("drop", handleDrop);
+    };
+  }, []);
+
+  // Allow pasting images from clipboard
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        const imageFiles = Array.from(e.clipboardData.files).filter((file) =>
+          file.type.startsWith("image/")
+        );
+        if (imageFiles.length > 0) {
+          e.preventDefault();
+          processImageFiles(imageFiles);
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, []);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData("text/plain", index.toString());
+    e.dataTransfer.effectAllowed = "move";
+    setDraggedImageIndex(index);
+  };
+
+  const handleDragOverReorder = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDropReorder = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedImageIndex === null || draggedImageIndex === targetIndex) {
+      setDraggedImageIndex(null);
+      return;
+    }
+
+    setImages((prev) => {
+      const newImages = [...prev];
+      const [movedImage] = newImages.splice(draggedImageIndex, 1);
+      newImages.splice(targetIndex, 0, movedImage);
+      return newImages;
+    });
+    setDraggedImageIndex(null);
   };
 
   const handleRemoveImage = (index: number) => {
@@ -303,7 +464,24 @@ export default function ProductForm() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto relative">
+      {/* Full-window Drag & Drop Overlay */}
+      {isDraggingOverWindow && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm border-4 border-dashed border-primary flex flex-col items-center justify-center p-6 pointer-events-none animate-in fade-in duration-200">
+          <div className="bg-card shadow-2xl rounded-2xl border p-8 max-w-md text-center flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-bounce">
+              <Upload className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Drop images anywhere</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Release to automatically compress and add them to product media
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -488,14 +666,39 @@ export default function ProductForm() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
-            <Card>
+            <Card
+              className={cn(
+                "transition-all duration-200",
+                isDraggingOverMedia && "border-primary ring-2 ring-primary/20 bg-primary/5"
+              )}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes("Files")) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "copy";
+                  setIsDraggingOverMedia(true);
+                }
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setIsDraggingOverMedia(false);
+              }}
+              onDrop={(e) => {
+                if (e.dataTransfer.types.includes("Files") && e.dataTransfer.files.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingOverMedia(false);
+                  processImageFiles(e.dataTransfer.files);
+                }
+              }}
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="w-5 h-5" />
                   Media
                 </CardTitle>
                 <CardDescription>
-                  Add product images (drag to reorder)
+                  Add product images (drag & drop from anywhere or drag to reorder)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -503,63 +706,84 @@ export default function ProductForm() {
                   {images.map((img, index) => (
                     <div
                       key={index}
-                      className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted"
+                      draggable={!isUploadingImage}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOverReorder(e)}
+                      onDrop={(e) => handleDropReorder(e, index)}
+                      onDragEnd={() => setDraggedImageIndex(null)}
+                      className={cn(
+                        "relative group aspect-square rounded-lg overflow-hidden border border-border bg-muted cursor-move transition-all",
+                        draggedImageIndex === index && "opacity-40 scale-95 border-dashed border-primary"
+                      )}
+                      title="Drag to reorder"
                     >
                       <img
                         src={img}
                         alt={`Product ${index + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover pointer-events-none"
                       />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-auto">
                         <Button
                           variant="destructive"
                           size="icon"
+                          type="button"
                           className="h-8 w-8"
-                          onClick={() => handleRemoveImage(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveImage(index);
+                          }}
                         >
                           <X className="w-4 h-4" />
                         </Button>
                       </div>
-                      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                         <GripVertical className="w-4 h-4 text-white" />
                       </div>
+                      {index === 0 && (
+                        <div className="absolute bottom-2 left-2 bg-primary text-primary-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded shadow pointer-events-none">
+                          Main
+                        </div>
+                      )}
                     </div>
                   ))}
-                  <label className={cn(
-                    "cursor-pointer aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors",
-                    isUploadingImage && "opacity-50 cursor-not-allowed pointer-events-none"
-                  )}>
+                  <label
+                    className={cn(
+                      "cursor-pointer aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-colors",
+                      isUploadingImage && "opacity-50 cursor-not-allowed pointer-events-none"
+                    )}
+                    onDragOver={(e) => {
+                      if (e.dataTransfer.types.includes("Files")) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.dataTransfer.dropEffect = "copy";
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (e.dataTransfer.types.includes("Files") && e.dataTransfer.files.length > 0) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        processImageFiles(e.dataTransfer.files);
+                      }
+                    }}
+                  >
                     {isUploadingImage ? (
                       <Loader2 className="w-6 h-6 animate-spin" />
                     ) : (
                       <Upload className="w-6 h-6" />
                     )}
-                    <span className="text-xs">{isUploadingImage ? "Compressing..." : "Add Image"}</span>
+                    <span className="text-xs text-center px-2">
+                      {isUploadingImage ? "Compressing..." : "Add / Drop Images"}
+                    </span>
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       className="hidden"
                       disabled={isUploadingImage}
                       onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setIsUploadingImage(true);
-                          try {
-                            const compressedUrl = await compressImage(file);
-                            setImages((prev) => [
-                              ...prev,
-                              compressedUrl,
-                            ]);
-                          } catch (err: any) {
-                            console.error("Failed to compress image:", err);
-                            toast({
-                              title: "Upload Error",
-                              description: "Failed to process the uploaded image.",
-                              variant: "destructive",
-                            });
-                          } finally {
-                            setIsUploadingImage(false);
-                          }
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          await processImageFiles(files);
                         }
                         e.target.value = "";
                       }}
