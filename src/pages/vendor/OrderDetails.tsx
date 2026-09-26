@@ -23,8 +23,18 @@ import {
   Edit,
   RotateCcw,
   ExternalLink,
+  IndianRupee,
+  AlertCircle,
+  Landmark,
+  Wallet,
+  Receipt,
+  Check,
+  Building2,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -52,10 +62,10 @@ import {
   useUpdateOrderStatusMutation,
   useUpdateOrderPaymentStatusMutation,
   useUpdateOrderAddressMutation,
-  useReturnOrderMutation
+  useReturnOrderMutation,
+  useProcessRefundMutation,
 } from '@/api/hooks/order.hooks';
-
-
+import { useUserQuery } from '@/api/hooks/user.hooks';
 
 const statusConfig = {
   pending: { icon: Clock, label: 'Pending', class: 'badge-warning', color: 'bg-warning/10 text-warning border-warning/20' },
@@ -84,26 +94,140 @@ const paymentStatusOptions = [
   { value: 'FAILED', label: 'Failed' },
 ];
 
+const refundReasonPresets = [
+  "Customer Cancellation / Changed Mind",
+  "Defective or Damaged Product Received",
+  "Incorrect / Wrong Item Shipped",
+  "Product Quality Not as Expected",
+  "Order Lost / Delayed in Transit",
+  "Double Payment / Technical Overcharge",
+  "Customer Return Request Approved",
+  "Out of Stock / Item Unavailable",
+  "Other (Specified in Notes)",
+];
+
 export default function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data: order, isLoading, error } = useOrderDetailQuery(orderId || '');
+  const { data: customerUserData } = useUserQuery(order?.userId || '', !!order?.userId);
 
   const updateStatusMutation = useUpdateOrderStatusMutation();
   const updatePaymentStatusMutation = useUpdateOrderPaymentStatusMutation();
   const updateAddressMutation = useUpdateOrderAddressMutation();
   const returnOrderMutation = useReturnOrderMutation();
+  const processRefundMutation = useProcessRefundMutation();
 
   const [status, setStatus] = useState<string>('PENDING');
   const [paymentStatus, setPaymentStatus] = useState<string>('UNPAID');
   const [internalNote, setInternalNote] = useState('');
-  const [refundReason, setRefundReason] = useState('');
+  
+  // Process Refund State
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
+  const [refundType, setRefundType] = useState<'FULL' | 'CUSTOM'>('FULL');
+  const [refundAmount, setRefundAmount] = useState<string>('');
+  const [refundMethod, setRefundMethod] = useState<string>('ORIGINAL_PAYMENT_METHOD');
+  const [refundReasonCategory, setRefundReasonCategory] = useState<string>(refundReasonPresets[0]);
+  const [refundReason, setRefundReason] = useState('');
+  const [refundAdminNote, setRefundAdminNote] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [refundTxnId, setRefundTxnId] = useState('');
+  const [hasAutoFetchedBank, setHasAutoFetchedBank] = useState<boolean>(false);
+  const [hasAutoFetchedUpi, setHasAutoFetchedUpi] = useState<boolean>(false);
+  const [isEditingBank, setIsEditingBank] = useState<boolean>(false);
+
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [adminReturnReason, setAdminReturnReason] = useState('');
+
+  const handleOpenRefundDialog = () => {
+    if (order) {
+      const orderTotal = Number(order.totalAmount).toFixed(2);
+      setRefundAmount(orderTotal);
+      setRefundType('FULL');
+      setRefundMethod(order.paymentMethod === 'COD' ? 'BANK_TRANSFER' : 'ORIGINAL_PAYMENT_METHOD');
+      setRefundReasonCategory(refundReasonPresets[0]);
+      setRefundReason('');
+      setRefundAdminNote('');
+      setRefundTxnId('');
+
+      // Auto-fetch user bank details from live customer profile, order.user, or past refund records in database
+      const customer = customerUserData || order.user;
+      const prevRefund = 
+        order.refunds?.find((r: any) => r.bankName || r.accountNumber || r.ifscCode || r.upiId) || 
+        order.user?.orderRefunds?.find((r: any) => r.bankName || r.accountNumber || r.ifscCode || r.upiId) ||
+        order.refunds?.[0] || 
+        order.user?.orderRefunds?.[0];
+
+      const fetchedAccountHolder = 
+        customer?.accountHolderName || 
+        prevRefund?.accountHolderName || 
+        `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() ||
+        order.shippingName || 
+        '';
+      const fetchedBankName = 
+        customer?.bankName || 
+        prevRefund?.bankName || 
+        '';
+      const fetchedAccountNumber = 
+        customer?.accountNumber || 
+        prevRefund?.accountNumber || 
+        '';
+      const fetchedIfscCode = 
+        customer?.ifscCode || 
+        prevRefund?.ifscCode || 
+        '';
+      const fetchedUpiId = 
+        customer?.upiId || 
+        prevRefund?.upiId || 
+        '';
+
+      setAccountHolderName(fetchedAccountHolder);
+      setBankName(fetchedBankName);
+      setAccountNumber(fetchedAccountNumber);
+      setIfscCode(fetchedIfscCode);
+      setUpiId(fetchedUpiId);
+
+      const hasBank = !!(fetchedBankName && fetchedAccountNumber) || !!(fetchedBankName || fetchedAccountNumber || fetchedIfscCode);
+      const hasUpi = !!fetchedUpiId;
+      setHasAutoFetchedBank(hasBank);
+      setHasAutoFetchedUpi(hasUpi);
+      setIsEditingBank(!hasBank);
+
+      setIsRefundDialogOpen(true);
+    }
+  };
+
+  // Reactively auto-fill bank details when user query completes asynchronously
+  useEffect(() => {
+    if (isRefundDialogOpen && customerUserData) {
+      const hasDbBank = !!(customerUserData.bankName || customerUserData.accountNumber || customerUserData.ifscCode);
+      if (hasDbBank) {
+        if (customerUserData.bankName) setBankName(customerUserData.bankName);
+        if (customerUserData.accountNumber) setAccountNumber(customerUserData.accountNumber);
+        if (customerUserData.ifscCode) setIfscCode(customerUserData.ifscCode);
+        if (customerUserData.accountHolderName) {
+          setAccountHolderName(customerUserData.accountHolderName);
+        } else if (customerUserData.firstName || customerUserData.lastName) {
+          setAccountHolderName(`${customerUserData.firstName || ''} ${customerUserData.lastName || ''}`.trim());
+        }
+        setHasAutoFetchedBank(true);
+        setIsEditingBank(false);
+      }
+      if (customerUserData.upiId) {
+        setUpiId(customerUserData.upiId);
+        setHasAutoFetchedUpi(true);
+      }
+    }
+  }, [customerUserData, isRefundDialogOpen]);
+
+
 
   const handleReturnOrder = () => {
     if (!order) return;
@@ -269,8 +393,64 @@ export default function OrderDetails() {
   };
 
   const handleRefund = () => {
-    setIsRefundDialogOpen(false);
-    handlePaymentStatusUpdate('REFUNDED');
+    if (!order) return;
+    const numAmount = parseFloat(refundAmount);
+    const orderTotal = Number(order.totalAmount);
+
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Refund Amount",
+        description: "Please enter a valid refund amount greater than ₹0",
+      });
+      return;
+    }
+
+    if (numAmount > orderTotal) {
+      toast({
+        variant: "destructive",
+        title: "Amount Exceeds Order Total",
+        description: `Refund amount cannot exceed total order value of ₹${orderTotal.toFixed(2)}`,
+      });
+      return;
+    }
+
+    const fullReason = refundReason.trim()
+      ? `${refundReasonCategory}: ${refundReason.trim()}`
+      : refundReasonCategory;
+
+    processRefundMutation.mutate(
+      {
+        orderId: order.id,
+        amount: numAmount,
+        reason: fullReason,
+        refundMethod,
+        adminNote: refundAdminNote,
+        accountHolderName: refundMethod === 'BANK_TRANSFER' ? accountHolderName : undefined,
+        bankName: refundMethod === 'BANK_TRANSFER' ? bankName : undefined,
+        accountNumber: refundMethod === 'BANK_TRANSFER' ? accountNumber : undefined,
+        ifscCode: refundMethod === 'BANK_TRANSFER' ? ifscCode : undefined,
+        upiId: refundMethod === 'UPI' ? upiId : undefined,
+        transactionId: refundTxnId || undefined,
+      },
+      {
+        onSuccess: () => {
+          setIsRefundDialogOpen(false);
+          setPaymentStatus('REFUNDED');
+          toast({
+            title: "Refund Processed",
+            description: `Refund of ₹${numAmount.toFixed(2)} processed successfully for ${order.orderNumber}`,
+          });
+        },
+        onError: (err: any) => {
+          toast({
+            variant: "destructive",
+            title: "Refund Failed",
+            description: err?.message || "Failed to process refund. Please try again.",
+          });
+        },
+      }
+    );
   };
 
   const handleCancelOrder = () => {
@@ -371,32 +551,434 @@ export default function OrderDetails() {
           {paymentStatus !== 'REFUNDED' && (
             <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleOpenRefundDialog}>
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Refund
                 </Button>
               </DialogTrigger>
 
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Process Refund</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to refund this order? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <label className="text-sm font-medium">Reason for refund</label>
-                  <Textarea
-                    placeholder="Enter reason for refund..."
-                    value={refundReason}
-                    onChange={(e) => setRefundReason(e.target.value)}
-                    className="mt-2"
-                  />
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+                {/* Header with gradient top */}
+                <div className="p-6 border-b border-border bg-gradient-to-b from-primary/5 via-transparent to-transparent">
+                  <DialogHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <RotateCcw className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <DialogTitle className="text-xl font-bold">Process Order Refund</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                          Initiate & record a refund for order #{order.orderNumber}
+                        </DialogDescription>
+                      </div>
+                    </div>
+                  </DialogHeader>
+
+                  {/* Section 1: Kis Order Ka Refund Hai */}
+                  <div className="mt-4 p-3.5 rounded-xl border border-border bg-card/60 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-primary" />
+                        <span className="font-mono font-bold text-sm">{order.orderNumber}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className={cn('text-[11px] px-2 py-0.5', currentStatus.color)}>
+                          {currentStatus.label}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[11px] px-2 py-0.5">
+                          {order.paymentMethod || 'Online'}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-border/50 text-muted-foreground">
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground/70">Customer</span>
+                        <span className="font-medium text-foreground truncate block">{order.shippingName || 'Customer'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground/70">Phone</span>
+                        <span className="font-medium text-foreground">{order.shippingPhone}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground/70">Order Date</span>
+                        <span className="font-medium text-foreground">{new Date(order.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsRefundDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleRefund}>Process Refund</Button>
-                </DialogFooter>
+
+                <div className="p-6 space-y-5">
+                  {/* Section 2: Order Items Summary Mini-Preview */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span>Order Items ({order.items?.length || 0})</span>
+                      <span>Total Paid: ₹{Number(order.totalAmount).toFixed(2)}</span>
+                    </div>
+                    <div className="space-y-2 max-h-36 overflow-y-auto pr-1 border border-border/60 rounded-lg p-2 bg-muted/20">
+                      {order.items?.map((item: any) => (
+                        <div key={item.id} className="flex items-center gap-3 p-1.5 rounded-md bg-background border border-border/40 text-xs">
+                          <img
+                            src={item.productImage}
+                            alt={item.productName}
+                            className="w-9 h-9 rounded object-cover border border-border bg-muted shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate text-foreground">{item.productName}</p>
+                            <p className="text-[11px] text-muted-foreground">Qty: {item.quantity} {item.size && `• ${item.size}`}</p>
+                          </div>
+                          <span className="font-semibold text-foreground shrink-0">₹{Number(item.totalPrice).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Kitna Refund Hai (Amount Calculation & Selection) */}
+                  <div className="space-y-3 p-4 rounded-xl border border-primary/20 bg-primary/5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold flex items-center gap-1.5">
+                        <IndianRupee className="w-4 h-4 text-primary" />
+                        Refund Amount (Kitna Refund Karna Hai)
+                      </Label>
+                      <Badge variant="outline" className="bg-background text-primary border-primary/30 text-xs">
+                        Max: ₹{Number(order.totalAmount).toFixed(2)}
+                      </Badge>
+                    </div>
+
+                    {/* Quick Selection Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRefundType('FULL');
+                          setRefundAmount(Number(order.totalAmount).toFixed(2));
+                        }}
+                        className={cn(
+                          "p-2.5 rounded-lg border text-left transition-all text-xs flex flex-col justify-between",
+                          refundType === 'FULL'
+                            ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary font-medium"
+                            : "border-border bg-background/80 hover:bg-background text-muted-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">Full Order Refund</span>
+                          {refundType === 'FULL' && <Check className="w-3.5 h-3.5 text-primary" />}
+                        </div>
+                        <span className="text-sm font-bold text-primary mt-1">₹{Number(order.totalAmount).toFixed(2)}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRefundType('CUSTOM')}
+                        className={cn(
+                          "p-2.5 rounded-lg border text-left transition-all text-xs flex flex-col justify-between",
+                          refundType === 'CUSTOM'
+                            ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary font-medium"
+                            : "border-border bg-background/80 hover:bg-background text-muted-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">Partial / Custom Amount</span>
+                          {refundType === 'CUSTOM' && <Check className="w-3.5 h-3.5 text-primary" />}
+                        </div>
+                        <span className="text-xs text-muted-foreground mt-1">Enter custom refund amount</span>
+                      </button>
+                    </div>
+
+                    {/* Amount Input */}
+                    <div className="relative mt-2">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground font-semibold">
+                        ₹
+                      </div>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        max={Number(order.totalAmount)}
+                        value={refundAmount}
+                        onChange={(e) => {
+                          setRefundAmount(e.target.value);
+                          if (e.target.value !== Number(order.totalAmount).toFixed(2)) {
+                            setRefundType('CUSTOM');
+                          } else {
+                            setRefundType('FULL');
+                          }
+                        }}
+                        placeholder="Enter refund amount"
+                        className="pl-8 font-semibold text-base h-11 bg-background"
+                      />
+                    </div>
+
+                    {/* Order Financial Breakdown Chips */}
+                    <div className="grid grid-cols-4 gap-1.5 pt-1 text-[11px] text-center text-muted-foreground">
+                      <div className="p-1.5 rounded bg-background/60 border border-border/40">
+                        <span className="block text-[10px]">Subtotal</span>
+                        <span className="font-medium text-foreground">₹{Number(order.subtotal).toFixed(2)}</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-background/60 border border-border/40">
+                        <span className="block text-[10px]">Shipping</span>
+                        <span className="font-medium text-foreground">{Number(order.shippingCharge) > 0 ? `₹${Number(order.shippingCharge).toFixed(2)}` : 'Free'}</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-background/60 border border-border/40">
+                        <span className="block text-[10px]">Tax</span>
+                        <span className="font-medium text-foreground">₹{Number(order.tax).toFixed(2)}</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-background/60 border border-border/40">
+                        <span className="block text-[10px]">Discount</span>
+                        <span className="font-medium text-foreground">{Number(order.discount) > 0 ? `-₹${Number(order.discount).toFixed(2)}` : '₹0.00'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Refund Method Selection */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <Landmark className="w-4 h-4 text-primary" />
+                      Refund Destination / Method
+                    </Label>
+                    <Select value={refundMethod} onValueChange={setRefundMethod}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ORIGINAL_PAYMENT_METHOD">
+                          Original Payment Method ({order.paymentMethod || 'Razorpay / Gateway'})
+                        </SelectItem>
+                        <SelectItem value="BANK_TRANSFER">
+                          Direct Bank Transfer (NEFT / IMPS)
+                        </SelectItem>
+                        <SelectItem value="UPI">
+                          UPI Transfer (GPay / PhonePe / Paytm)
+                        </SelectItem>
+                        <SelectItem value="STORE_CREDIT">
+                          Store Credit / Wallet Balance
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Conditional Bank Details */}
+                    {refundMethod === 'BANK_TRANSFER' && (
+                      <div className="p-3.5 rounded-lg border border-border bg-muted/30 text-xs space-y-3">
+                        <div className="flex items-center justify-between pb-1 border-b border-border/50">
+                          <span className="font-semibold text-foreground flex items-center gap-1.5">
+                            <Landmark className="w-3.5 h-3.5 text-primary" />
+                            Customer Bank Account Details
+                          </span>
+                          {hasAutoFetchedBank ? (
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 flex items-center">
+                                <Check className="w-3 h-3 mr-1" />
+                                Auto-fetched from database
+                              </Badge>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsEditingBank(!isEditingBank)}
+                                className="h-6 px-2 text-[10px] text-primary hover:bg-primary/10"
+                              >
+                                {isEditingBank ? "Use Auto-Fetched" : "Edit / Change"}
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 flex items-center">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              No bank saved — Add Details
+                            </Badge>
+                          )}
+                        </div>
+
+                        {hasAutoFetchedBank && !isEditingBank ? (
+                          <div className="p-3 rounded-md bg-background border border-border/70 space-y-2.5 shadow-sm">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-[11px] text-muted-foreground block">Bank Name</span>
+                                <span className="font-semibold text-foreground">{bankName || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[11px] text-muted-foreground block">Account Holder</span>
+                                <span className="font-semibold text-foreground">{accountHolderName || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-[11px] text-muted-foreground block">Account Number</span>
+                                <span className="font-mono font-bold text-foreground">
+                                  {accountNumber ? `•••• •••• ${accountNumber.slice(-4)} (${accountNumber})` : 'N/A'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[11px] text-muted-foreground block">IFSC Code</span>
+                                <span className="font-mono font-semibold text-foreground uppercase">{ifscCode || 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {!hasAutoFetchedBank && (
+                              <div className="p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-200 text-[11px] leading-relaxed">
+                                💡 <strong>No saved bank account in database:</strong> Enter the bank details below. Processing this refund will automatically save these details to the customer's database profile for future payouts.
+                              </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="font-medium text-muted-foreground block mb-1">Account Holder Name</label>
+                                <Input
+                                  placeholder="Full name as per bank"
+                                  value={accountHolderName}
+                                  onChange={(e) => setAccountHolderName(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                />
+                              </div>
+                              <div>
+                                <label className="font-medium text-muted-foreground block mb-1">Bank Name</label>
+                                <Input
+                                  placeholder="e.g. HDFC Bank, SBI"
+                                  value={bankName}
+                                  onChange={(e) => setBankName(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                />
+                              </div>
+                              <div>
+                                <label className="font-medium text-muted-foreground block mb-1">Account Number</label>
+                                <Input
+                                  placeholder="Enter bank account number"
+                                  value={accountNumber}
+                                  onChange={(e) => setAccountNumber(e.target.value)}
+                                  className="h-8 text-xs bg-background"
+                                />
+                              </div>
+                              <div>
+                                <label className="font-medium text-muted-foreground block mb-1">IFSC Code</label>
+                                <Input
+                                  placeholder="e.g. HDFC0001234"
+                                  value={ifscCode}
+                                  onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                                  className="h-8 text-xs bg-background uppercase"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Conditional UPI Details */}
+                    {refundMethod === 'UPI' && (
+                      <div className="p-3.5 rounded-lg border border-border bg-muted/30 text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="font-medium text-muted-foreground block">Customer UPI ID / VPA</label>
+                          {hasAutoFetchedUpi ? (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 flex items-center">
+                              <Check className="w-3 h-3 mr-1" />
+                              Auto-fetched from database
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 flex items-center">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              No UPI saved — Enter ID
+                            </Badge>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="e.g. mobile@upi or username@okhdfcbank"
+                          value={upiId}
+                          onChange={(e) => setUpiId(e.target.value)}
+                          className="h-9 text-xs bg-background"
+                        />
+                        {!hasAutoFetchedUpi && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Will be saved to customer profile for future refunds automatically.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section 5: Reason for Refund */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-primary" />
+                      Reason for Refund
+                    </Label>
+                    <Select value={refundReasonCategory} onValueChange={setRefundReasonCategory}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {refundReasonPresets.map((preset) => (
+                          <SelectItem key={preset} value={preset}>
+                            {preset}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Textarea
+                      placeholder="Additional details / customer notes about this refund..."
+                      value={refundReason}
+                      onChange={(e) => setRefundReason(e.target.value)}
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </div>
+
+                  {/* Section 6: Optional Reference / Admin Note */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="font-medium text-muted-foreground block mb-1">Gateway Ref / Txn ID (Optional)</label>
+                      <Input
+                        placeholder="e.g. rfr_123456789"
+                        value={refundTxnId}
+                        onChange={(e) => setRefundTxnId(e.target.value)}
+                        className="h-8 text-xs bg-background font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-medium text-muted-foreground block mb-1">Internal Note (Optional)</label>
+                      <Input
+                        placeholder="Visible only to admin team"
+                        value={refundAdminNote}
+                        onChange={(e) => setRefundAdminNote(e.target.value)}
+                        className="h-8 text-xs bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Confirmation Notice Box */}
+                  <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">
+                        Ready to refund ₹{Number(refundAmount || 0).toFixed(2)} to {order.shippingName || 'customer'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        This action will mark order payment as REFUNDED and log a permanent audit record in the database.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-border bg-muted/20 flex items-center justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsRefundDialogOpen(false)} disabled={processRefundMutation.isPending}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRefund}
+                    disabled={processRefundMutation.isPending || !refundAmount || Number(refundAmount) <= 0}
+                    className="bg-primary text-primary-foreground font-semibold"
+                  >
+                    {processRefundMutation.isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Processing Refund...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Confirm Refund (₹{Number(refundAmount || 0).toFixed(2)})
+                      </>
+                    )}
+                  </Button>
+                </div>
               </DialogContent>
             </Dialog>
           )}
@@ -839,12 +1421,83 @@ export default function OrderDetails() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Amount</span>
-                    <span className="font-semibold text-primary">${Number(order.totalAmount).toFixed(2)}</span>
+                    <span className="font-semibold text-primary">₹{Number(order.totalAmount).toFixed(2)}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Refund Details (if refunded or has refunds) */}
+          {(paymentStatus === 'REFUNDED' || (order.refunds && order.refunds.length > 0)) && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.32 }}
+            >
+              <Card className="border-amber-500/30 bg-amber-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <RotateCcw className="w-5 h-5" />
+                    Refund Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {order.refunds && order.refunds.length > 0 ? (
+                    order.refunds.map((ref: any, idx: number) => (
+                      <div key={ref.id || idx} className="p-3 rounded-lg bg-background/80 border border-border space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-semibold text-xs text-foreground">{ref.refundNumber}</span>
+                          <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300">
+                            {ref.status || 'COMPLETED'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Amount Refunded</span>
+                          <span className="font-bold text-primary text-sm">₹{Number(ref.amount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Method</span>
+                          <span className="font-medium text-foreground">{ref.refundMethod?.replace(/_/g, ' ') || 'Original Method'}</span>
+                        </div>
+                        {ref.reason && (
+                          <div className="pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
+                            <span className="font-semibold block text-[10px] uppercase text-muted-foreground/70">Reason</span>
+                            <p className="mt-0.5 text-foreground">{ref.reason}</p>
+                          </div>
+                        )}
+                        {ref.upiId && (
+                          <div className="text-xs text-muted-foreground flex justify-between">
+                            <span>UPI ID:</span>
+                            <span className="font-mono text-foreground">{ref.upiId}</span>
+                          </div>
+                        )}
+                        {ref.accountNumber && (
+                          <div className="text-xs text-muted-foreground flex justify-between">
+                            <span>Bank Account:</span>
+                            <span className="font-mono text-foreground">{ref.accountNumber} ({ref.ifscCode})</span>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-3 rounded-lg bg-background/80 border border-border space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Status</span>
+                        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300">
+                          REFUNDED
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span className="font-bold text-primary text-sm">₹{Number(order.totalAmount).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Customer Note */}
           {order.note && (

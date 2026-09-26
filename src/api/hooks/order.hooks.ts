@@ -59,6 +59,42 @@ export interface DBOrder {
     latitude?: number | null;
     type?: string;
   } | null;
+  user?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phoneNumber?: string | null;
+    accountHolderName?: string | null;
+    bankName?: string | null;
+    accountNumber?: string | null;
+    ifscCode?: string | null;
+    upiId?: string | null;
+    orderRefunds?: Array<{
+      accountHolderName?: string | null;
+      bankName?: string | null;
+      accountNumber?: string | null;
+      ifscCode?: string | null;
+      upiId?: string | null;
+    }>;
+  } | null;
+  refunds?: Array<{
+    id: string;
+    refundNumber: string;
+    amount: string | number;
+    reason?: string | null;
+    status: string;
+    refundMethod: string;
+    adminNote?: string | null;
+    accountHolderName?: string | null;
+    bankName?: string | null;
+    accountNumber?: string | null;
+    ifscCode?: string | null;
+    upiId?: string | null;
+    transactionId?: string | null;
+    processedAt?: string | null;
+    createdAt: string;
+  }>;
 }
 
 export const orderKeys = {
@@ -197,6 +233,40 @@ export const useCancelOrderMutation = () => {
     },
   });
 };
+
+export interface ProcessRefundInput {
+  orderId: string;
+  amount: number;
+  reason: string;
+  refundMethod?: string;
+  adminNote?: string;
+  accountHolderName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  upiId?: string;
+  transactionId?: string;
+}
+
+export const useProcessRefundMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ refund: any; order: DBOrder } | DBOrder, Error, ProcessRefundInput>({
+    mutationFn: async (data) => {
+      const { orderId, ...payload } = data;
+      const response = await apiClient.post<{ success: boolean; data: any }>(
+        `/order/${orderId}/refund`,
+        payload
+      );
+      return response.data.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+      queryClient.invalidateQueries({ queryKey: orderKeys.detail(variables.orderId) });
+    },
+  });
+};
+
 
 
 

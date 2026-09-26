@@ -1,5 +1,5 @@
-const API_BASE_URL = "https://jwellery-backend.vercel.app/api";
-// const API_BASE_URL = "http://localhost:4000/api";
+// const API_BASE_URL = "https://jwellery-backend.vercel.app/api";
+const API_BASE_URL = "http://localhost:4000/api";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, any>;
